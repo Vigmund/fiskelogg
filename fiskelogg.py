@@ -25,11 +25,9 @@ else:
 if not os.path.exists(IMAGES_FOLDER):
     os.makedirs(IMAGES_FOLDER)
 
-# Funktion för att hämta en grön färg från listan (varierar per anrop)
 def get_random_green_color(idx=0):
     return GRON_FARGER[idx % len(GRON_FARGER)]
 
-# Spara dataframes till filer
 def save_users():
     global users_df
     users_df.to_csv(USERS_CSV, index=False)
@@ -38,7 +36,6 @@ def save_logs():
     global logs_df
     logs_df.to_csv(LOGS_CSV, index=False)
 
-# Startsida
 def startsida():
     st.markdown(f"""
         <div style="background-color:{BEIGE_BG}; padding:20px; border-radius:10px;">
@@ -53,7 +50,6 @@ def startsida():
     if st.button("Skapa konto"):
         st.session_state['page'] = "register"
 
-# Registrera nytt konto
 def register():
     global users_df
     st.markdown(f"<h2 style='color:{get_random_green_color(2)}'>Registrera nytt konto</h2>", unsafe_allow_html=True)
@@ -68,7 +64,9 @@ def register():
         if username in users_df['username'].values:
             st.error("Användarnamnet är upptaget. Välj ett annat.")
         else:
-            users_df = users_df.append({"username": username, "password": password}, ignore_index=True)
+            # Korrekt sätt att lägga till rad i pandas utan append()
+            new_row = pd.DataFrame([{"username": username, "password": password}])
+            users_df = pd.concat([users_df, new_row], ignore_index=True)
             save_users()
             st.success("Kontot skapat! Logga in med dina uppgifter.")
             st.session_state['page'] = "login"
@@ -77,7 +75,6 @@ def register():
         st.session_state['page'] = "start"
         st.experimental_rerun()
 
-# Logga in
 def login():
     global users_df
     st.markdown(f"<h2 style='color:{get_random_green_color(3)}'>Logga in</h2>", unsafe_allow_html=True)
@@ -97,13 +94,11 @@ def login():
         st.session_state['page'] = "start"
         st.experimental_rerun()
 
-# Logga ut
 def logout():
     st.session_state.pop('user', None)
     st.session_state['page'] = "start"
     st.experimental_rerun()
 
-# Ny fisklogg
 def ny_logg():
     global logs_df
     st.markdown(f"<h2 style='color:{get_random_green_color(4)}'>Ny fångst</h2>", unsafe_allow_html=True)
@@ -133,14 +128,13 @@ def ny_logg():
             "meddelande": meddelande,
             "bild": bild_path
         }
-        logs_df = logs_df.append(ny_rad, ignore_index=True)
+        logs_df = pd.concat([logs_df, pd.DataFrame([ny_rad])], ignore_index=True)
         save_logs()
         st.success("Logg sparad!")
         if st.button("Till startsidan"):
             st.session_state['page'] = "home"
             st.experimental_rerun()
 
-# Visa fångster för inloggad användare
 def visa_mina_fangster():
     global logs_df
     st.markdown(f"<h2 style='color:{get_random_green_color(5)}'>Mina fångster</h2>", unsafe_allow_html=True)
@@ -158,100 +152,89 @@ def visa_mina_fangster():
                 <b style="color:{get_random_green_color(idx+4)}">Plats:</b> {row['plats']}<br>
                 <b style="color:{get_random_green_color(idx+5)}">Meddelande:</b> {row['meddelande']}<br>
             """, unsafe_allow_html=True)
-            if row['bild']:
-                try:
-                    st.image(row['bild'], width=300)
-                except:
-                    st.text("Bild kunde inte visas.")
-            if st.button(f"Ta bort logg #{idx}", key=f"del_{idx}"):
-                if st.checkbox(f"Är du säker på att du vill slänga tillbaks den här fisken i sjön? (logg #{idx})", key=f"confirm_{idx}"):
-                    logs_df = logs_df.drop(idx)
-                    save_logs()
-                    st.success("Logg borttagen!")
-                    st.experimental_rerun()
+            if row["bild"]:
+                if os.path.exists(row["bild"]):
+                    st.image(row["bild"], width=300)
+            if st.button(f"Ta bort fångst {idx}"):
+                logs_df.drop(idx, inplace=True)
+                save_logs()
+                st.experimental_rerun()
             st.markdown("</div>", unsafe_allow_html=True)
     if st.button("Till startsidan"):
         st.session_state['page'] = "home"
         st.experimental_rerun()
 
-# Huvudsida efter login
 def home():
-    st.markdown(f"""
-    <div style="background-color:{BEIGE_BG}; padding:15px; border-radius:10px; margin-bottom:10px;">
-        <h2 style="color:{get_random_green_color(0)}">Välkommen, {st.session_state['user']}!</h2>
-        <button onclick="window.location.href='#';" id="nylogg_btn">Ny fångst</button>
-        <button onclick="window.location.href='#';" id="mina_fangster_btn">Mina fångster</button>
-        <button onclick="window.location.href='#';" id="logga_ut_btn">Logga ut</button>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:{get_random_green_color(0)}'>Välkommen, {st.session_state['user']}!</h2>", unsafe_allow_html=True)
+    if st.button("Ny fångst"):
+        st.session_state['page'] = "ny_logg"
+        st.experimental_rerun()
+    if st.button("Mina fångster"):
+        st.session_state['page'] = "mina_fangster"
+        st.experimental_rerun()
+    if st.button("Logga ut"):
+        logout()
 
-    # Simple knappar med Streamlit istället för HTML-knappar för bättre kontroll
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("Ny fångst"):
-            st.session_state['page'] = "ny_logg"
-            st.experimental_rerun()
-    with col2:
-        if st.button("Mina fångster"):
-            st.session_state['page'] = "mina_fangster"
-            st.experimental_rerun()
-    with col3:
-        if st.button("Logga ut"):
-            logout()
-
-# Main controller
 def main():
-    if 'page' not in st.session_state:
-        st.session_state['page'] = "start"
-    if 'user' not in st.session_state:
-        st.session_state['user'] = None
-
+    st.set_page_config(page_title="Fiskeloggen", page_icon="🎣", layout="centered")
     st.markdown(f"""
     <style>
+        /* Bakgrund och textfärger */
         .stApp {{
             background-color: {BEIGE_BG};
+            color: {GRON_FARGER[0]};
         }}
-        .css-1d391kg {{
-            color: {get_random_green_color(0)};
+        /* All text som är label eller rubrik i form */
+        label, h1, h2, h3, h4, h5, h6 {{
+            color: {GRON_FARGER[1]} !important;
         }}
-        label {{
-            color: {get_random_green_color(1)};
+        /* Inputfältens text och placeholders */
+        input[type="text"], input[type="password"], input[type="number"], textarea {{
+            color: {GRON_FARGER[2]} !important;
+        }}
+        ::placeholder {{
+            color: {GRON_FARGER[3]} !important;
+        }}
+        /* Buttons färg */
+        div.stButton > button:first-child {{
+            background-color: {GRON_FARGER[4]};
+            color: {BEIGE_BG};
             font-weight: bold;
         }}
-        input, textarea {{
-            color: {get_random_green_color(5)};
-            background-color: #F9F9F9;
-        }}
-        .stButton>button {{
-            background-color: {get_random_green_color(2)};
-            color: white;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: bold;
-        }}
-        .stButton>button:hover {{
-            background-color: {get_random_green_color(3)};
+        div.stButton > button:first-child:hover {{
+            background-color: {GRON_FARGER[5]};
+            color: {BEIGE_BG};
         }}
     </style>
     """, unsafe_allow_html=True)
 
-    if st.session_state['user'] is None:
-        if st.session_state['page'] == "start":
-            startsida()
-        elif st.session_state['page'] == "login":
-            login()
-        elif st.session_state['page'] == "register":
-            register()
-    else:
-        if st.session_state['page'] == "home":
-            home()
-        elif st.session_state['page'] == "ny_logg":
-            ny_logg()
-        elif st.session_state['page'] == "mina_fangster":
-            visa_mina_fangster()
-        else:
-            st.session_state['page'] = "home"
+    if 'page' not in st.session_state:
+        st.session_state['page'] = "start"
+
+    if st.session_state['page'] == "start":
+        startsida()
+    elif st.session_state['page'] == "login":
+        login()
+    elif st.session_state['page'] == "register":
+        register()
+    elif st.session_state['page'] == "home":
+        if 'user' not in st.session_state:
+            st.session_state['page'] = "start"
             st.experimental_rerun()
+        else:
+            home()
+    elif st.session_state['page'] == "ny_logg":
+        if 'user' not in st.session_state:
+            st.session_state['page'] = "start"
+            st.experimental_rerun()
+        else:
+            ny_logg()
+    elif st.session_state['page'] == "mina_fangster":
+        if 'user' not in st.session_state:
+            st.session_state['page'] = "start"
+            st.experimental_rerun()
+        else:
+            visa_mina_fangster()
 
 if __name__ == "__main__":
     main()
