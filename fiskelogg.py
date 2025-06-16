@@ -47,8 +47,10 @@ def startsida():
     """, unsafe_allow_html=True)
     if st.button("Logga in"):
         st.session_state['page'] = "login"
+        st.experimental_rerun()
     if st.button("Skapa konto"):
         st.session_state['page'] = "register"
+        st.experimental_rerun()
 
 def register():
     global users_df
@@ -57,20 +59,20 @@ def register():
         username = st.text_input("Välj användarnamn", max_chars=20)
         password = st.text_input("Välj lösenord", type="password", max_chars=20)
         submitted = st.form_submit_button("Registrera")
+
     if submitted:
         if username.strip() == "" or password.strip() == "":
             st.error("Användarnamn och lösenord får inte vara tomma.")
-            return
-        if username in users_df['username'].values:
+        elif username in users_df['username'].values:
             st.error("Användarnamnet är upptaget. Välj ett annat.")
         else:
-            # Korrekt sätt att lägga till rad i pandas utan append()
             new_row = pd.DataFrame([{"username": username, "password": password}])
             users_df = pd.concat([users_df, new_row], ignore_index=True)
             save_users()
             st.success("Kontot skapat! Logga in med dina uppgifter.")
             st.session_state['page'] = "login"
             st.experimental_rerun()
+
     if st.button("Tillbaka"):
         st.session_state['page'] = "start"
         st.experimental_rerun()
@@ -82,6 +84,7 @@ def login():
         username = st.text_input("Användarnamn")
         password = st.text_input("Lösenord", type="password")
         submitted = st.form_submit_button("Logga in")
+
     if submitted:
         user_row = users_df[(users_df['username'] == username) & (users_df['password'] == password)]
         if not user_row.empty:
@@ -90,6 +93,7 @@ def login():
             st.experimental_rerun()
         else:
             st.error("Fel användarnamn eller lösenord.")
+
     if st.button("Tillbaka"):
         st.session_state['page'] = "start"
         st.experimental_rerun()
@@ -111,6 +115,7 @@ def ny_logg():
         meddelande = st.text_area("Meddelande (valfritt)")
         bild = st.file_uploader("Ladda upp bild", type=["png", "jpg", "jpeg"])
         submitted = st.form_submit_button("Spara logg")
+
     if submitted:
         bild_path = ""
         if bild is not None:
@@ -131,9 +136,10 @@ def ny_logg():
         logs_df = pd.concat([logs_df, pd.DataFrame([ny_rad])], ignore_index=True)
         save_logs()
         st.success("Logg sparad!")
-        if st.button("Till startsidan"):
-            st.session_state['page'] = "home"
-            st.experimental_rerun()
+
+    if st.button("Till startsidan"):
+        st.session_state['page'] = "home"
+        st.experimental_rerun()
 
 def visa_mina_fangster():
     global logs_df
@@ -182,9 +188,9 @@ def main():
         /* Bakgrund och textfärger */
         .stApp {{
             background-color: {BEIGE_BG};
-            color: {GRON_FARGER[0]};
+            color: {GRON_FARGER[0]} !important;
         }}
-        /* All text som är label eller rubrik i form */
+        /* Label och rubriker */
         label, h1, h2, h3, h4, h5, h6 {{
             color: {GRON_FARGER[1]} !important;
         }}
@@ -197,13 +203,13 @@ def main():
         }}
         /* Buttons färg */
         div.stButton > button:first-child {{
-            background-color: {GRON_FARGER[4]};
-            color: {BEIGE_BG};
+            background-color: {GRON_FARGER[4]} !important;
+            color: {BEIGE_BG} !important;
             font-weight: bold;
         }}
         div.stButton > button:first-child:hover {{
-            background-color: {GRON_FARGER[5]};
-            color: {BEIGE_BG};
+            background-color: {GRON_FARGER[5]} !important;
+            color: {BEIGE_BG} !important;
         }}
     </style>
     """, unsafe_allow_html=True)
