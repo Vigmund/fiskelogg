@@ -19,7 +19,10 @@ st.markdown(
 DATAFIL = "fiskeloggar.csv"
 
 def safe_rerun():
-    st.experimental_rerun()
+    try:
+        st.experimental_rerun()
+    except Exception:
+        pass
 
 def läs_data():
     if os.path.exists(DATAFIL):
@@ -31,65 +34,63 @@ def spara_data(df):
     df.to_csv(DATAFIL, index=False)
 
 def startsida():
+    st.title("🐟 Fiskeloggen")
+
     if "inloggad" not in st.session_state:
         st.session_state.inloggad = False
-    if "page" not in st.session_state:
-        st.session_state.page = None
     if "användare" not in st.session_state:
         st.session_state.användare = ""
 
-    st.title("🐟 Fiskeloggen")
-
     if not st.session_state.inloggad:
-        if st.session_state.page is None:
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Logga in", key="btn_logga_in"):
-                    st.session_state.page = "login"
-            with col2:
-                if st.button("Skapa konto", key="btn_skapa_konto"):
-                    st.session_state.page = "register"
-        elif st.session_state.page == "login":
-            login()
-            if st.button("Tillbaka", key="btn_tillbaka_login"):
-                st.session_state.page = None
-        elif st.session_state.page == "register":
-            register()
-            if st.button("Tillbaka", key="btn_tillbaka_register"):
-                st.session_state.page = None
+        st.write("### Välj ett alternativ:")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Logga in", key="btn_logga_in"):
+                st.session_state.val = "Logga in"
+                safe_rerun()
+        with col2:
+            if st.button("Skapa konto", key="btn_skapa_konto"):
+                st.session_state.val = "Skapa konto"
+                safe_rerun()
 
+        val = st.session_state.get("val", None)
+        if val == "Logga in":
+            login()
+        elif val == "Skapa konto":
+            register()
     else:
-        if st.session_state.page is None:
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button("Logga ny fisk", key="btn_logga_ny_fisk"):
-                    st.session_state.page = "ny_logg"
-            with col2:
-                if st.button("Mina loggar", key="btn_mina_loggar"):
-                    st.session_state.page = "home"
-            with col3:
-                if st.button("Logga ut", key="btn_logga_ut"):
-                    st.session_state.inloggad = False
-                    st.session_state.användare = ""
-                    st.session_state.page = None
-                    safe_rerun()
-        elif st.session_state.page == "ny_logg":
+        st.write(f"### Välkommen, {st.session_state.användare}!")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Logga ny fisk", key="btn_logga_ny_fisk"):
+                st.session_state.val = "Logga ny fisk"
+                safe_rerun()
+        with col2:
+            if st.button("Mina loggar", key="btn_mina_loggar"):
+                st.session_state.val = "Mina loggar"
+                safe_rerun()
+        with col3:
+            if st.button("Logga ut", key="btn_logga_ut"):
+                st.session_state.inloggad = False
+                st.session_state.användare = ""
+                st.session_state.val = None
+                safe_rerun()
+
+        val = st.session_state.get("val", None)
+        if val == "Logga ny fisk":
             ny_logg()
-            if st.button("Tillbaka", key="btn_tillbaka_ny_logg"):
-                st.session_state.page = None
-        elif st.session_state.page == "home":
+        elif val == "Mina loggar":
             home()
-            if st.button("Tillbaka", key="btn_tillbaka_home"):
-                st.session_state.page = None
 
 def login():
     st.subheader("Logga in")
     användarnamn = st.text_input("Användarnamn", key="login_anvandarnamn")
     lösenord = st.text_input("Lösenord", type="password", key="login_losenord")
-    if st.button("Logga in", key="btn_logga_in_login"):
+    if st.button("Logga in", key="btn_logga_in_knapp"):
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
+            st.session_state.val = None
             st.success("Inloggning lyckades!")
             safe_rerun()
         else:
@@ -103,6 +104,7 @@ def register():
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
+            st.session_state.val = None
             st.success("Konto skapades!")
             safe_rerun()
         else:
@@ -169,4 +171,5 @@ def ny_logg():
         st.success("Fångsten sparades!")
         safe_rerun()
 
+# Starta appen
 startsida()
