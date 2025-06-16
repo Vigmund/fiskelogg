@@ -3,6 +3,10 @@ import pandas as pd
 import os
 
 LOGG_FIL = "loggar.csv"
+BILD_MAPP = "bilder"
+
+# Se till att bildmapp finns
+os.makedirs(BILD_MAPP, exist_ok=True)
 
 # Läs in loggar
 if os.path.exists(LOGG_FIL):
@@ -16,6 +20,8 @@ if "page" not in st.session_state:
 
 def visa_mina_fangster():
     st.title("Mina fångster")
+    global df  # Så vi kan uppdatera den
+
     if df.empty:
         st.info("Du har inga fångster ännu.")
     else:
@@ -25,6 +31,17 @@ def visa_mina_fangster():
                 st.write(f"Vikt: {row['Vikt (kg)']} kg")
                 if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
                     st.image(row['Bild'], width=200)
+
+                if st.button("Ta bort logg", key=f"delete_{i}"):
+                    # Radera eventuell bildfil
+                    if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
+                        os.remove(row['Bild'])
+
+                    df = df.drop(i).reset_index(drop=True)
+                    df.to_csv(LOGG_FIL, index=False)
+                    st.success("Logg borttagen!")
+                    st.experimental_rerun()
+
     if st.button("Tillbaka", key="tillbaka_fangster"):
         st.session_state.page = "home"
 
@@ -39,13 +56,9 @@ def ny_logg():
 
         submitted = st.form_submit_button("Spara logg")
         if submitted:
-            # Skapa bildmapp om den inte finns
-            os.makedirs("bilder", exist_ok=True)
-
-            # Spara bilden lokalt och spara sökväg i CSV
             bild_path = ""
             if bild is not None:
-                bild_path = f"bilder/{bild.name}"
+                bild_path = os.path.join(BILD_MAPP, bild.name)
                 with open(bild_path, "wb") as f:
                     f.write(bild.getbuffer())
 
@@ -58,7 +71,7 @@ def ny_logg():
             }
 
             global df
-            df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
+            df.loc[len(df)] = ny_rad
             df.to_csv(LOGG_FIL, index=False)
             st.success("Logg sparad!")
             st.session_state.page = "home"
