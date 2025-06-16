@@ -2,54 +2,42 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Filnamn för sparade data
 LOGG_FIL = "loggar.csv"
 USERS_FIL = "users.csv"
 
-# --- Funktion för att ladda användardata ---
 def load_users():
     if os.path.exists(USERS_FIL):
         return pd.read_csv(USERS_FIL)
     else:
         return pd.DataFrame(columns=["username", "password"])
 
-# --- Funktion för att ladda loggar ---
 def load_logs():
     if os.path.exists(LOGG_FIL):
         return pd.read_csv(LOGG_FIL)
     else:
         return pd.DataFrame(columns=["username", "Datum", "Art", "Vikt (kg)", "Plats", "Bild"])
 
-# --- Spara användardata ---
 def save_users(df):
     df.to_csv(USERS_FIL, index=False)
 
-# --- Spara loggar ---
 def save_logs(df):
     df.to_csv(LOGG_FIL, index=False)
 
-# --- Initiera data ---
 users_df = load_users()
 logs_df = load_logs()
 
-# --- Sätt tema och layout via CSS ---
 def set_custom_theme():
     st.markdown(
         """
         <style>
-        /* Bakgrund beige */
         .stApp {
             background-color: #EDE8D0;
             color: #25523B;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         }
-
-        /* Huvudtitlar */
         .css-1v3fvcr h1 {
             color: #30694B;
         }
-
-        /* Knappstil */
         .stButton > button {
             background-color: #5AAB61;
             color: white;
@@ -62,15 +50,11 @@ def set_custom_theme():
             background-color: #62BD69;
             color: white;
         }
-
-        /* Formulär-input */
         input, textarea {
             border-radius: 6px;
             border: 1px solid #358856;
             padding: 6px;
         }
-
-        /* Expander bakgrund */
         .streamlit-expanderHeader {
             color: #0C3823;
             font-weight: 600;
@@ -82,42 +66,41 @@ def set_custom_theme():
 
 set_custom_theme()
 
-# --- Globala session_state variabler ---
 if "page" not in st.session_state:
     st.session_state.page = "login"
 
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
 
-# --- Funktion för registrering ---
 def register():
     st.title("Registrera nytt konto")
-    username = st.text_input("Användarnamn")
-    password = st.text_input("Lösenord", type="password")
+    username = st.text_input("Användarnamn", key="reg_user")
+    password = st.text_input("Lösenord", type="password", key="reg_pw")
+
     if st.button("Registrera"):
         global users_df
-        if username == "" or password == "":
+        if username.strip() == "" or password.strip() == "":
             st.warning("Användarnamn och lösenord får inte vara tomma.")
-            return
-        if username in users_df["username"].values:
+        elif username in users_df["username"].values:
             st.error("Användarnamnet är upptaget, välj ett annat.")
-            return
-        ny_user = {"username": username, "password": password}
-        users_df = pd.concat([users_df, pd.DataFrame([ny_user])], ignore_index=True)
-        save_users(users_df)
-        st.success("Konto skapat! Logga in nu.")
-        st.session_state.page = "login"
-        st.experimental_rerun()
+        else:
+            ny_user = {"username": username, "password": password}
+            users_df = pd.concat([users_df, pd.DataFrame([ny_user])], ignore_index=True)
+            save_users(users_df)
+            st.success("Konto skapat! Logga in nu.")
+            st.session_state.page = "login"
+            # Istället för direkt rerun här, gör en liten knapp för användaren att trycka
+            st.experimental_rerun()
 
     if st.button("Tillbaka till inloggning"):
         st.session_state.page = "login"
         st.experimental_rerun()
 
-# --- Funktion för inloggning ---
 def login():
     st.title("Logga in")
-    username = st.text_input("Användarnamn")
-    password = st.text_input("Lösenord", type="password")
+    username = st.text_input("Användarnamn", key="login_user")
+    password = st.text_input("Lösenord", type="password", key="login_pw")
+
     if st.button("Logga in"):
         global users_df
         if (users_df["username"] == username).any():
@@ -136,7 +119,6 @@ def login():
         st.session_state.page = "register"
         st.experimental_rerun()
 
-# --- Funktion för att visa fångster ---
 def visa_mina_fangster():
     st.title("Mina fångster")
     global logs_df
@@ -152,7 +134,6 @@ def visa_mina_fangster():
                 if pd.notna(row['Bild']) and row['Bild'] != "":
                     st.image(row['Bild'], width=200)
 
-                # Ta bort logg med bekräftelse
                 if f"ta_bort_{i}" not in st.session_state:
                     st.session_state[f"ta_bort_{i}"] = False
 
@@ -177,7 +158,6 @@ def visa_mina_fangster():
         st.session_state.page = "home"
         st.experimental_rerun()
 
-# --- Funktion för ny logg ---
 def ny_logg():
     st.title("Ny logg")
     global logs_df
@@ -218,7 +198,6 @@ def ny_logg():
         st.session_state.page = "home"
         st.experimental_rerun()
 
-# --- Huvudmeny ---
 def home():
     st.title("🎣 Fiskeloggen")
     col1, col2 = st.columns(2)
@@ -236,7 +215,6 @@ def home():
         st.session_state.page = "login"
         st.experimental_rerun()
 
-# --- Appens flöde ---
 if st.session_state.page == "login":
     login()
 elif st.session_state.page == "register":
@@ -249,4 +227,3 @@ elif st.session_state.page == "ny_logg":
     ny_logg()
 else:
     st.error("Okänt läge!")
-
