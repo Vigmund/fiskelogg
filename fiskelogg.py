@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import os
 
+
+# Skapa mapp för bilder om den inte finns
+if not os.path.exists("bilder"):
+    os.makedirs("bilder")
+
+
 LOGG_FIL = "loggar.csv"
 
 # Läs in loggar
