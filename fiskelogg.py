@@ -5,63 +5,29 @@ import os
 LOGG_FIL = "loggar.csv"
 USERS_FIL = "users.csv"
 
-# --- CSS Styling för färger och typsnitt ---
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
-
-    html, body, [class*="css"]  {
-        background-color: #EDE8D0;
-        color: #25523B;
-        font-family: 'Roboto', sans-serif;
-    }
-    .stButton>button {
-        background-color: #358856;
-        color: white;
-        font-weight: 600;
-        border-radius: 6px;
-        padding: 8px 16px;
-        transition: background-color 0.3s ease;
-    }
-    .stButton>button:hover {
-        background-color: #25523B;
-        color: white;
-    }
-    h1, h2, h3, h4, h5 {
-        color: #30694B;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# --- Läs in användare ---
+# Läs in användare
 if os.path.exists(USERS_FIL):
     users_df = pd.read_csv(USERS_FIL)
 else:
     users_df = pd.DataFrame(columns=["username", "password"])
+    users_df.to_csv(USERS_FIL, index=False)
 
-# --- Läs in loggar ---
+# Läs in loggar
 if os.path.exists(LOGG_FIL):
     df = pd.read_csv(LOGG_FIL)
 else:
-    df = pd.DataFrame(columns=["username", "Datum", "Art", "Vikt (kg)", "Plats", "Bild"])
+    df = pd.DataFrame(columns=["Datum", "Art", "Vikt (kg)", "Plats", "Bild", "username"])
 
-# Initiera session_state
+# Initiera session_state variabler
 if "page" not in st.session_state:
     st.session_state.page = "login"
 if "username" not in st.session_state:
     st.session_state.username = None
-if "confirm_delete_id" not in st.session_state:
-    st.session_state.confirm_delete_id = None
 
 def save_users():
-    global users_df
     users_df.to_csv(USERS_FIL, index=False)
 
-def save_loggar():
-    global df
+def save_logs():
     df.to_csv(LOGG_FIL, index=False)
 
 def login():
@@ -97,18 +63,14 @@ def login():
                 else:
                     users_df.loc[len(users_df)] = [new_username, new_password]
                     save_users()
+                    users_df = pd.read_csv(USERS_FIL)  # Ladda om users_df efter sparande
                     st.success("Konto skapat! Logga in ovan.")
+                    st.session_state.page = "login"
                     st.experimental_rerun()
-
-def logout():
-    st.session_state.username = None
-    st.session_state.page = "login"
-    st.experimental_rerun()
 
 def visa_mina_fangster():
     global df
-    st.title(f"🎣 Mina fångster - {st.session_state.username}")
-
+    st.title(f"Mina fångster - {st.session_state.username}")
     user_logs = df[df['username'] == st.session_state.username]
     if user_logs.empty:
         st.info("Du har inga fångster ännu.")
@@ -118,40 +80,20 @@ def visa_mina_fangster():
                 st.write(f"Plats: {row['Plats']}")
                 st.write(f"Vikt: {row['Vikt (kg)']} kg")
                 if pd.notna(row['Bild']) and row['Bild'] != "":
-                    try:
-                        st.image(row['Bild'], width=200)
-                    except:
-                        st.write("Kunde inte ladda bilden.")
-
-                # Ta bort knapp med bekräftelse
-                delete_key = f"delete_{i}"
-                if st.session_state.confirm_delete_id == i:
-                    st.warning("Är du säker på att du vill slänga tillbaks den här fisken i sjön?")
-                    col_yes, col_no = st.columns(2)
-                    with col_yes:
-                        if st.button("Ja, ta bort", key=f"confirm_yes_{i}"):
-                            df = df.drop(i)
-                            df.reset_index(drop=True, inplace=True)
-                            save_loggar()
-                            st.success("Logg borttagen.")
-                            st.session_state.confirm_delete_id = None
-                            st.experimental_rerun()
-                    with col_no:
-                        if st.button("Nej", key=f"confirm_no_{i}"):
-                            st.session_state.confirm_delete_id = None
-                            st.experimental_rerun()
-                else:
-                    if st.button("Ta bort logg", key=delete_key):
-                        st.session_state.confirm_delete_id = i
+                    st.image(row['Bild'], width=200)
+                if st.button("Ta bort logg", key=f"ta_bort_{i}"):
+                    if st.confirm("Är du säker på att du vill slänga tillbaks den här fisken i sjön?"):
+                        df = df.drop(i).reset_index(drop=True)
+                        save_logs()
+                        st.success("Logg borttagen.")
                         st.experimental_rerun()
-
-    if st.button("Tillbaka", key="tillbaka_fangster"):
+    if st.button("Tillbaka"):
         st.session_state.page = "home"
         st.experimental_rerun()
 
 def ny_logg():
     global df
-    st.title("🎣 Ny logg")
+    st.title("Ny logg")
     with st.form("form_ny_logg"):
         datum = st.date_input("Datum")
         art = st.text_input("Art")
@@ -163,48 +105,43 @@ def ny_logg():
         if submitted:
             bild_path = ""
             if bild is not None:
-                os.makedirs("bilder", exist_ok=True)
+                if not os.path.exists("bilder"):
+                    os.makedirs("bilder")
                 bild_path = f"bilder/{bild.name}"
                 with open(bild_path, "wb") as f:
                     f.write(bild.getbuffer())
 
             ny_rad = {
-                "username": st.session_state.username,
                 "Datum": datum.strftime("%Y-%m-%d"),
                 "Art": art,
                 "Vikt (kg)": vikt,
                 "Plats": plats,
-                "Bild": bild_path
+                "Bild": bild_path,
+                "username": st.session_state.username
             }
             df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
-            save_loggar()
+            save_logs()
             st.success("Logg sparad!")
             st.session_state.page = "home"
             st.experimental_rerun()
 
-    if st.button("Tillbaka", key="tillbaka_nylogg"):
+    if st.button("Tillbaka"):
         st.session_state.page = "home"
         st.experimental_rerun()
 
 def home():
     st.title("🎣 Fiskeloggen")
-    st.write(f"Hej, {st.session_state.username}!")
+    if st.button("Mina fångster"):
+        st.session_state.page = "mina_fangster"
+        st.experimental_rerun()
+    if st.button("Ny logg"):
+        st.session_state.page = "ny_logg"
+        st.experimental_rerun()
+    if st.button("Logga ut"):
+        st.session_state.username = None
+        st.session_state.page = "login"
+        st.experimental_rerun()
 
-    # Temporär knapp-layout med kolumner
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Mina fångster", key="btn_fangster"):
-            st.session_state.page = "mina_fangster"
-            st.experimental_rerun()
-    with col2:
-        if st.button("Ny logg", key="btn_nylogg"):
-            st.session_state.page = "ny_logg"
-            st.experimental_rerun()
-
-    if st.button("Logga ut", key="btn_logout"):
-        logout()
-
-# --- Main ---
 if st.session_state.page == "login":
     login()
 elif st.session_state.page == "home":
