@@ -14,33 +14,15 @@ else:
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-# Initiera delete_index och confirm_delete i session_state
 if "delete_index" not in st.session_state:
     st.session_state.delete_index = None
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
+if "do_delete" not in st.session_state:
+    st.session_state.do_delete = False
 
 def visa_mina_fangster():
-    global df
     st.title("Mina fångster")
-
-    # Om vi har valt att bekräfta borttagning
-    if st.session_state.confirm_delete and st.session_state.delete_index is not None:
-        i = st.session_state.delete_index
-        row = df.iloc[i]
-        # Ta bort bildfil om den finns
-        if pd.notna(row['Bild']) and row['Bild'] != "" and os.path.exists(row['Bild']):
-            os.remove(row['Bild'])
-
-        df.drop(i, inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        df.to_csv(LOGG_FIL, index=False)
-
-        st.success("Logg borttagen!")
-        # Nollställ state och rerun för att uppdatera sidan
-        st.session_state.delete_index = None
-        st.session_state.confirm_delete = False
-        st.experimental_rerun()
 
     if df.empty:
         st.info("Du har inga fångster ännu.")
@@ -52,11 +34,9 @@ def visa_mina_fangster():
                 if pd.notna(row['Bild']) and row['Bild'] != "":
                     st.image(row['Bild'], width=200)
 
-                # Visa Ta bort knapp om vi inte redan valt en att ta bort
                 if st.session_state.delete_index is None:
                     if st.button("Ta bort logg", key=f"delete_{i}"):
                         st.session_state.delete_index = i
-                # Om vi valt att ta bort just denna logg, visa bekräftelse
                 elif st.session_state.delete_index == i:
                     st.warning("Är du säker på att du vill slänga tillbaks den här fisken i sjön?")
                     col1, col2 = st.columns(2)
@@ -72,7 +52,6 @@ def visa_mina_fangster():
         st.session_state.delete_index = None
         st.session_state.confirm_delete = False
         st.session_state.page = "home"
-
 
 def ny_logg():
     global df
@@ -110,7 +89,7 @@ def ny_logg():
     if st.button("Tillbaka", key="tillbaka_nylogg"):
         st.session_state.page = "home"
 
-# Huvudmeny
+# Huvudmeny och sidlogik
 if st.session_state.page == "home":
     st.title("🎣 Fiskeloggen")
     if st.button("Mina fångster"):
@@ -120,6 +99,24 @@ if st.session_state.page == "home":
 
 elif st.session_state.page == "mina_fangster":
     visa_mina_fangster()
+
+    # Här gör vi själva borttagningen och rerun UTANFÖR funktionen
+    if st.session_state.confirm_delete and st.session_state.delete_index is not None:
+        i = st.session_state.delete_index
+        row = df.iloc[i]
+
+        # Ta bort bildfil om den finns
+        if pd.notna(row['Bild']) and row['Bild'] != "" and os.path.exists(row['Bild']):
+            os.remove(row['Bild'])
+
+        df.drop(i, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        df.to_csv(LOGG_FIL, index=False)
+
+        # Nollställ session state och rerun sidan
+        st.session_state.delete_index = None
+        st.session_state.confirm_delete = False
+        st.experimental_rerun()
 
 elif st.session_state.page == "ny_logg":
     ny_logg()
