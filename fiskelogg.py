@@ -16,15 +16,6 @@ st.markdown(
         color: #25523B;
         font-family: 'Roboto', sans-serif;
     }
-    .css-1emrehy e16nr0p30 {  /* För Streamlit knappar */
-        background-color: #358856;
-        color: white;
-        font-weight: 600;
-    }
-    button:hover {
-        background-color: #25523B !important;
-        color: white !important;
-    }
     .stButton>button {
         background-color: #358856;
         color: white;
@@ -66,12 +57,15 @@ if "confirm_delete_id" not in st.session_state:
     st.session_state.confirm_delete_id = None
 
 def save_users():
+    global users_df
     users_df.to_csv(USERS_FIL, index=False)
 
 def save_loggar():
+    global df
     df.to_csv(LOGG_FIL, index=False)
 
 def login():
+    global users_df
     st.title("🎣 Fiskeloggen - Logga in eller registrera dig")
     col1, col2 = st.columns(2)
     with col1:
@@ -112,6 +106,7 @@ def logout():
     st.experimental_rerun()
 
 def visa_mina_fangster():
+    global df
     st.title(f"🎣 Mina fångster - {st.session_state.username}")
 
     user_logs = df[df['username'] == st.session_state.username]
@@ -135,7 +130,6 @@ def visa_mina_fangster():
                     col_yes, col_no = st.columns(2)
                     with col_yes:
                         if st.button("Ja, ta bort", key=f"confirm_yes_{i}"):
-                            global df
                             df = df.drop(i)
                             df.reset_index(drop=True, inplace=True)
                             save_loggar()
@@ -156,6 +150,7 @@ def visa_mina_fangster():
         st.experimental_rerun()
 
 def ny_logg():
+    global df
     st.title("🎣 Ny logg")
     with st.form("form_ny_logg"):
         datum = st.date_input("Datum")
@@ -173,7 +168,6 @@ def ny_logg():
                 with open(bild_path, "wb") as f:
                     f.write(bild.getbuffer())
 
-            global df
             ny_rad = {
                 "username": st.session_state.username,
                 "Datum": datum.strftime("%Y-%m-%d"),
