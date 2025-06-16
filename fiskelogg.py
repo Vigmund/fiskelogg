@@ -19,6 +19,7 @@ if "delete_index" not in st.session_state:
     st.session_state.delete_index = None
 
 def visa_mina_fangster():
+    global df
     st.title("Mina fångster")
     if df.empty:
         st.info("Du har inga fångster ännu.")
@@ -42,7 +43,6 @@ def visa_mina_fangster():
                             # Radera eventuell bildfil
                             if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
                                 os.remove(row['Bild'])
-                            global df
                             df.drop(i, inplace=True)
                             df.reset_index(drop=True, inplace=True)
                             df.to_csv(LOGG_FIL, index=False)
@@ -61,6 +61,7 @@ def visa_mina_fangster():
         st.session_state.page = "home"
 
 def ny_logg():
+    global df
     st.title("Ny logg")
     with st.form("form_ny_logg"):
         datum = st.date_input("Datum")
@@ -86,7 +87,6 @@ def ny_logg():
                 "Plats": plats,
                 "Bild": bild_path
             }
-            global df
             df.loc[len(df)] = ny_rad
             df.to_csv(LOGG_FIL, index=False)
 
