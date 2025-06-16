@@ -2,16 +2,13 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Färger
 BEIGE_BG = "#EDE8D0"
 GRON_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
 
-# Datafiler
 USERS_CSV = "users.csv"
 LOGS_CSV = "logs.csv"
 IMAGES_FOLDER = "images"
 
-# Initiera dataframes globalt
 if os.path.exists(USERS_CSV):
     users_df = pd.read_csv(USERS_CSV)
 else:
@@ -72,10 +69,12 @@ def register():
             st.success("Kontot skapat! Logga in med dina uppgifter.")
             st.session_state['page'] = "login"
             st.experimental_rerun()
+            return  # Viktigt: direkt return efter rerun
 
     if st.button("Tillbaka"):
         st.session_state['page'] = "start"
         st.experimental_rerun()
+        return  # Viktigt även här
 
 def login():
     global users_df
@@ -91,12 +90,14 @@ def login():
             st.session_state['user'] = username
             st.session_state['page'] = "home"
             st.experimental_rerun()
+            return
         else:
             st.error("Fel användarnamn eller lösenord.")
 
     if st.button("Tillbaka"):
         st.session_state['page'] = "start"
         st.experimental_rerun()
+        return
 
 def logout():
     st.session_state.pop('user', None)
@@ -140,6 +141,7 @@ def ny_logg():
     if st.button("Till startsidan"):
         st.session_state['page'] = "home"
         st.experimental_rerun()
+        return
 
 def visa_mina_fangster():
     global logs_df
@@ -165,21 +167,26 @@ def visa_mina_fangster():
                 logs_df.drop(idx, inplace=True)
                 save_logs()
                 st.experimental_rerun()
+                return
             st.markdown("</div>", unsafe_allow_html=True)
     if st.button("Till startsidan"):
         st.session_state['page'] = "home"
         st.experimental_rerun()
+        return
 
 def home():
     st.markdown(f"<h2 style='color:{get_random_green_color(0)}'>Välkommen, {st.session_state['user']}!</h2>", unsafe_allow_html=True)
     if st.button("Ny fångst"):
         st.session_state['page'] = "ny_logg"
         st.experimental_rerun()
+        return
     if st.button("Mina fångster"):
         st.session_state['page'] = "mina_fangster"
         st.experimental_rerun()
+        return
     if st.button("Logga ut"):
         logout()
+        return
 
 def main():
     st.set_page_config(page_title="Fiskeloggen", page_icon="🎣", layout="centered")
@@ -227,20 +234,20 @@ def main():
         if 'user' not in st.session_state:
             st.session_state['page'] = "start"
             st.experimental_rerun()
-        else:
-            home()
+            return
+        home()
     elif st.session_state['page'] == "ny_logg":
         if 'user' not in st.session_state:
             st.session_state['page'] = "start"
             st.experimental_rerun()
-        else:
-            ny_logg()
+            return
+        ny_logg()
     elif st.session_state['page'] == "mina_fangster":
         if 'user' not in st.session_state:
             st.session_state['page'] = "start"
             st.experimental_rerun()
-        else:
-            visa_mina_fangster()
+            return
+        visa_mina_fangster()
 
 if __name__ == "__main__":
     main()
