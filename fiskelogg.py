@@ -1,11 +1,20 @@
 import streamlit as st
 import pandas as pd
 import os
+import random
+from streamlit.runtime.scriptrunner.script_runner import RerunException
 
 # --- Färgpalett ---
 BEIGE = "#EDE8D0"
 GREENS = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
 BLACK = "#000000"
+
+# --- Wrapper för att tysta interna rerun-fel ---
+def safe_rerun():
+    try:
+        st.experimental_rerun()
+    except RerunException:
+        pass
 
 st.set_page_config(page_title="Fiskeloggen", page_icon="🎣", layout="centered")
 
@@ -23,12 +32,9 @@ if not os.path.exists("fangster.csv"):
 else:
     df = pd.read_csv("fangster.csv")
 
-
 # --- Hjälpfunktion för färg (för att variera textfärg) ---
-import random
 def random_green():
     return random.choice(GREENS)
-
 
 # --- Startsida ---
 def startsida():
@@ -47,14 +53,13 @@ def startsida():
     with col1:
         if st.button("Logga in", use_container_width=True):
             st.session_state.page = "login"
-            st.experimental_rerun()
+            safe_rerun()
             return
     with col2:
         if st.button("Skapa konto", use_container_width=True):
             st.session_state.page = "register"
-            st.experimental_rerun()
+            safe_rerun()
             return
-
 
 # --- Inloggning ---
 def login():
@@ -76,7 +81,7 @@ def login():
                         st.session_state.user = username
                         st.session_state.page = "home"
                         st.success(f"Välkommen, {username}!")
-                        st.experimental_rerun()
+                        safe_rerun()
                         return
                     else:
                         st.error("Fel lösenord.")
@@ -85,9 +90,8 @@ def login():
 
     if st.button("Tillbaka", use_container_width=True):
         st.session_state.page = "startsida"
-        st.experimental_rerun()
+        safe_rerun()
         return
-
 
 # --- Registrering ---
 def register():
@@ -111,14 +115,13 @@ def register():
                     users_df.to_csv("users.csv", index=False)
                     st.success("Kontot skapat! Logga in med dina uppgifter.")
                     st.session_state.page = "login"
-                    st.experimental_rerun()
+                    safe_rerun()
                     return
 
     if st.button("Tillbaka", use_container_width=True):
         st.session_state.page = "startsida"
-        st.experimental_rerun()
+        safe_rerun()
         return
-
 
 # --- Startsida efter inloggning ---
 def home():
@@ -129,21 +132,20 @@ def home():
     with col1:
         if st.button("Ny logg", use_container_width=True):
             st.session_state.page = "ny_logg"
-            st.experimental_rerun()
+            safe_rerun()
             return
     with col2:
         if st.button("Mina fångster", use_container_width=True):
             st.session_state.page = "mina_fangster"
-            st.experimental_rerun()
+            safe_rerun()
             return
     with col3:
         if st.button("Logga ut", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.user = None
             st.session_state.page = "startsida"
-            st.experimental_rerun()
+            safe_rerun()
             return
-
 
 # --- Ny logg ---
 def ny_logg():
@@ -172,14 +174,13 @@ def ny_logg():
             df.to_csv("fangster.csv", index=False)
             st.success("Fångst sparad!")
             st.session_state.page = "home"
-            st.experimental_rerun()
+            safe_rerun()
             return
 
     if st.button("Tillbaka", use_container_width=True):
         st.session_state.page = "home"
-        st.experimental_rerun()
+        safe_rerun()
         return
-
 
 # --- Visa mina fångster ---
 def visa_mina_fangster():
@@ -204,84 +205,40 @@ def visa_mina_fangster():
             """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("**Vill du ta bort en logg?**")
-        idx_to_delete = st.selectbox("Välj logg att ta bort (Datum - Art)", 
-                                    options=[f"{row['datum']} - {row['art']}" for _, row in mina_fangster.iterrows()])
-        if st.button("Ta bort vald logg"):
-            # Hitta raden och ta bort
-            del_index = mina_fangster[(mina_fangster["datum"] + " - " + mina_fangster["art"]) == idx_to_delete].index[0]
-            df.drop(index=del_index, inplace=True)
+        st.markdown("### Radera en logg")
+        logg_id = st.number_input("Ange numret på loggen att radera (0 till {}):".format(len(mina_fangster) - 1),
+                                  min_value=0, max_value=len(mina_fangster) - 1, step=1)
+
+        if st.button("Radera logg", use_container_width=True):
+            index_to_drop = mina_fangster.index[logg_id]
+            df.drop(index=index_to_drop, inplace=True)
             df.to_csv("fangster.csv", index=False)
-            st.success("Logg borttagen!")
-            st.experimental_rerun()
+            st.success("Loggen har raderats.")
+            safe_rerun()
             return
 
     if st.button("Tillbaka", use_container_width=True):
         st.session_state.page = "home"
-        st.experimental_rerun()
+        safe_rerun()
         return
 
+# --- Routing ---
+if "page" not in st.session_state:
+    st.session_state.page = "startsida"
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "user" not in st.session_state:
+    st.session_state.user = None
 
-# --- Main-funktion som styr navigation ---
-def main():
-    if "page" not in st.session_state:
-        st.session_state.page = "startsida"
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-    if "user" not in st.session_state:
-        st.session_state.user = None
-
-    # Färg för hela appen
-    st.markdown(f"""
-    <style>
-    .stApp {{
-        background-color: {BEIGE};
-        color: {BLACK};
-    }}
-    /* Ändra placeholder text färg i inputs (mörkgrönt) */
-    input::placeholder, textarea::placeholder {{
-        color: {GREENS[1]} !important;
-        opacity: 1 !important;
-    }}
-    /* Ändra etikettfärg i formulär */
-    label {{
-        color: {GREENS[2]} !important;
-        font-weight: bold;
-    }}
-    /* Ändra knapptext och bakgrund */
-    button {{
-        background-color: {GREENS[3]} !important;
-        color: {BEIGE} !important;
-        font-weight: bold;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-    if not st.session_state.logged_in:
-        if st.session_state.page == "startsida":
-            startsida()
-        elif st.session_state.page == "login":
-            login()
-        elif st.session_state.page == "register":
-            register()
-        else:
-            # Om något annat värde - visa startsida
-            st.session_state.page = "startsida"
-            st.experimental_rerun()
-    else:
-        # Inloggad användare
-        if st.session_state.page == "home":
-            home()
-        elif st.session_state.page == "ny_logg":
-            ny_logg()
-        elif st.session_state.page == "mina_fangster":
-            visa_mina_fangster()
-        else:
-            # Om något annat värde - hem sidan
-            st.session_state.page = "home"
-            st.experimental_rerun()
-
-
-if __name__ == "__main__":
-    main()
-    
+if st.session_state.page == "startsida":
+    startsida()
+elif st.session_state.page == "login":
+    login()
+elif st.session_state.page == "register":
+    register()
+elif st.session_state.page == "home":
+    home()
+elif st.session_state.page == "ny_logg":
+    ny_logg()
+elif st.session_state.page == "mina_fangster":
+    visa_mina_fangster()
