@@ -36,7 +36,7 @@ def visa_mina_fangster():
                     df.to_csv(LOGG_FIL, index=False)
 
                     st.session_state.page = "mina_fangster"
-                    st.experimental_set_query_params()
+                    st.query_params.clear()  # Nyare sätt än experimental_set_query_params
                     st.success("Logg borttagen!")
                     return
 
