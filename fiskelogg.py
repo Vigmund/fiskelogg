@@ -1,249 +1,287 @@
 import streamlit as st
 import pandas as pd
 import os
+
+# --- Färgpalett ---
+BEIGE = "#EDE8D0"
+GREENS = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
+BLACK = "#000000"
+
+st.set_page_config(page_title="Fiskeloggen", page_icon="🎣", layout="centered")
+
+# --- Initiera/ Läs in datafiler ---
+
+if not os.path.exists("users.csv"):
+    users_df = pd.DataFrame(columns=["username", "password"])
+    users_df.to_csv("users.csv", index=False)
+else:
+    users_df = pd.read_csv("users.csv")
+
+if not os.path.exists("fangster.csv"):
+    df = pd.DataFrame(columns=["username", "datum", "art", "vikt", "langd", "plats", "meddelande"])
+    df.to_csv("fangster.csv", index=False)
+else:
+    df = pd.read_csv("fangster.csv")
+
+
+# --- Hjälpfunktion för färg (för att variera textfärg) ---
 import random
+def random_green():
+    return random.choice(GREENS)
 
-# --- Konstanter för färger ---
-BEIGE_BG = "#EDE8D0"
-GRON_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
-
-# Filnamn för datalagring
-USERS_FILE = "users.csv"
-LOGG_FILE = "fangster.csv"
-
-# --- Hjälpfunktion för att slumpa grön färg ---
-def get_random_green_color(seed=None):
-    if seed is not None:
-        random.seed(seed)
-    return random.choice(GRON_FARGER)
-
-# --- Läs in eller skapa datafiler ---
-def load_users():
-    if os.path.exists(USERS_FILE):
-        return pd.read_csv(USERS_FILE)
-    else:
-        return pd.DataFrame(columns=["username", "password"])
-
-def load_logs():
-    if os.path.exists(LOGG_FILE):
-        return pd.read_csv(LOGG_FILE)
-    else:
-        return pd.DataFrame(columns=["username","datum","art","vikt","langd","plats","meddelande"])
-
-def save_users(df):
-    df.to_csv(USERS_FILE, index=False)
-
-def save_logs(df):
-    df.to_csv(LOGG_FILE, index=False)
 
 # --- Startsida ---
 def startsida():
     st.markdown(f"""
-        <div style="background-color:{BEIGE_BG}; padding:20px; border-radius:10px;">
-            <h1 style="color:{get_random_green_color(0)}; text-align:center;">Välkommen till Fiskeloggen!</h1>
-            <p style="color:{get_random_green_color(1)}; text-align:center;">
-                Logga in eller skapa nytt konto för att börja logga dina fångster.
-            </p>
-        </div>
+    <style>
+    .stApp {{
+        background-color: {BEIGE};
+        color: {BLACK};
+    }}
+    </style>
     """, unsafe_allow_html=True)
+    st.title("🎣 Välkommen till Fiskeloggen")
+    st.markdown(f'<h3 style="color:{random_green()};">Logga in eller skapa ett konto för att börja</h3>', unsafe_allow_html=True)
 
-    if st.button("Logga in"):
-        st.session_state['page'] = "login"
-        st.experimental_rerun()
-        return
-
-    if st.button("Skapa konto"):
-        st.session_state['page'] = "register"
-        st.experimental_rerun()
-        return
-
-# --- Login-sida ---
-def login():
-    users_df = load_users()
-    st.markdown(f"<h2 style='color:{get_random_green_color(2)}'>Logga in</h2>", unsafe_allow_html=True)
-    username = st.text_input("Användarnamn", key="login_username", help="Skriv ditt användarnamn", label_visibility="visible")
-    password = st.text_input("Lösenord", type="password", key="login_password", help="Skriv ditt lösenord", label_visibility="visible")
-
-    if st.button("Logga in"):
-        if username == "" or password == "":
-            st.error("Ange både användarnamn och lösenord.")
-        elif username in users_df["username"].values:
-            pw = users_df.loc[users_df["username"] == username, "password"].values[0]
-            if pw == password:
-                st.success(f"Välkommen, {username}!")
-                st.session_state['user'] = username
-                st.session_state['page'] = "home"
-                st.experimental_rerun()
-                return
-            else:
-                st.error("Fel lösenord.")
-        else:
-            st.error("Användarnamnet finns inte.")
-
-    if st.button("Tillbaka till startsidan"):
-        st.session_state['page'] = "start"
-        st.experimental_rerun()
-        return
-
-# --- Registrera nytt konto ---
-def register():
-    users_df = load_users()
-    st.markdown(f"<h2 style='color:{get_random_green_color(3)}'>Skapa nytt konto</h2>", unsafe_allow_html=True)
-    username = st.text_input("Välj användarnamn", key="register_username", help="Välj ett användarnamn", label_visibility="visible")
-    password = st.text_input("Välj lösenord", type="password", key="register_password", help="Välj ett lösenord", label_visibility="visible")
-
-    if st.button("Registrera"):
-        if username == "" or password == "":
-            st.error("Ange både användarnamn och lösenord.")
-        elif username in users_df["username"].values:
-            st.error("Användarnamnet är redan upptaget.")
-        else:
-            new_row = pd.DataFrame({"username": [username], "password": [password]})
-            users_df = pd.concat([users_df, new_row], ignore_index=True)
-            save_users(users_df)
-            st.success("Kontot skapat! Logga in med dina uppgifter.")
-            st.session_state['page'] = "login"
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Logga in", use_container_width=True):
+            st.session_state.page = "login"
+            st.experimental_rerun()
+            return
+    with col2:
+        if st.button("Skapa konto", use_container_width=True):
+            st.session_state.page = "register"
             st.experimental_rerun()
             return
 
-    if st.button("Tillbaka till startsidan"):
-        st.session_state['page'] = "start"
+
+# --- Inloggning ---
+def login():
+    st.markdown(f'<h2 style="color:{random_green()};">Logga in</h2>', unsafe_allow_html=True)
+    with st.form("login_form", clear_on_submit=False):
+        username = st.text_input("Användarnamn", key="login_username", placeholder="Ditt användarnamn")
+        password = st.text_input("Lösenord", type="password", key="login_password", placeholder="Ditt lösenord")
+
+        submitted = st.form_submit_button("Logga in")
+        if submitted:
+            if username == "" or password == "":
+                st.error("Fyll i både användarnamn och lösenord.")
+            else:
+                global users_df
+                if username in users_df["username"].values:
+                    pw_stored = users_df.loc[users_df["username"] == username, "password"].values[0]
+                    if password == pw_stored:
+                        st.session_state.logged_in = True
+                        st.session_state.user = username
+                        st.session_state.page = "home"
+                        st.success(f"Välkommen, {username}!")
+                        st.experimental_rerun()
+                        return
+                    else:
+                        st.error("Fel lösenord.")
+                else:
+                    st.error("Användarnamnet finns inte.")
+
+    if st.button("Tillbaka", use_container_width=True):
+        st.session_state.page = "startsida"
         st.experimental_rerun()
         return
+
+
+# --- Registrering ---
+def register():
+    st.markdown(f'<h2 style="color:{random_green()};">Skapa konto</h2>', unsafe_allow_html=True)
+    with st.form("register_form", clear_on_submit=False):
+        username = st.text_input("Välj användarnamn", key="register_username", placeholder="Nytt användarnamn")
+        password = st.text_input("Välj lösenord", type="password", key="register_password", placeholder="Nytt lösenord")
+
+        submitted = st.form_submit_button("Skapa konto")
+        if submitted:
+            if username == "" or password == "":
+                st.error("Fyll i både användarnamn och lösenord.")
+            else:
+                global users_df
+                if username in users_df["username"].values:
+                    st.error("Användarnamnet är redan upptaget.")
+                else:
+                    # Lägg till konto och spara
+                    new_user = {"username": username, "password": password}
+                    users_df = pd.concat([users_df, pd.DataFrame([new_user])], ignore_index=True)
+                    users_df.to_csv("users.csv", index=False)
+                    st.success("Kontot skapat! Logga in med dina uppgifter.")
+                    st.session_state.page = "login"
+                    st.experimental_rerun()
+                    return
+
+    if st.button("Tillbaka", use_container_width=True):
+        st.session_state.page = "startsida"
+        st.experimental_rerun()
+        return
+
 
 # --- Startsida efter inloggning ---
 def home():
-    st.markdown(f"<h2 style='color:{get_random_green_color(4)}'>Välkommen {st.session_state['user']}!</h2>", unsafe_allow_html=True)
-    if st.button("Ny logg"):
-        st.session_state['page'] = "ny_logg"
-        st.experimental_rerun()
-        return
-    if st.button("Mina fångster"):
-        st.session_state['page'] = "mina_fangster"
-        st.experimental_rerun()
-        return
-    if st.button("Logga ut"):
-        st.session_state.pop('user', None)
-        st.session_state['page'] = "start"
-        st.experimental_rerun()
-        return
+    st.markdown(f'<h2 style="color:{random_green()};">Hej {st.session_state.user}!</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h4 style="color:{random_green()};">Vad vill du göra?</h4>', unsafe_allow_html=True)
 
-# --- Ny fångst-logg ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("Ny logg", use_container_width=True):
+            st.session_state.page = "ny_logg"
+            st.experimental_rerun()
+            return
+    with col2:
+        if st.button("Mina fångster", use_container_width=True):
+            st.session_state.page = "mina_fangster"
+            st.experimental_rerun()
+            return
+    with col3:
+        if st.button("Logga ut", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.user = None
+            st.session_state.page = "startsida"
+            st.experimental_rerun()
+            return
+
+
+# --- Ny logg ---
 def ny_logg():
-    logs_df = load_logs()
-    st.markdown(f"<h2 style='color:{get_random_green_color(5)}'>Ny fångst</h2>", unsafe_allow_html=True)
-    with st.form("fisk_form"):
-        datum = st.date_input("Datum")
-        art = st.text_input("Art")
-        vikt = st.number_input("Vikt (kg)", min_value=0.0, format="%.2f")
-        langd = st.number_input("Längd (cm)", min_value=0.0, format="%.1f")
-        plats = st.text_input("Plats")
-        meddelande = st.text_area("Meddelande (valfritt)")
+    st.markdown(f'<h2 style="color:{random_green()};">Ny fångst</h2>', unsafe_allow_html=True)
+    with st.form("ny_logg_form", clear_on_submit=True):
+        datum = st.date_input("Datum", key="datum")
+        art = st.text_input("Art", key="art")
+        vikt = st.number_input("Vikt (kg)", min_value=0.0, format="%.2f", key="vikt")
+        langd = st.number_input("Längd (cm)", min_value=0.0, format="%.1f", key="langd")
+        plats = st.text_input("Plats", key="plats")
+        meddelande = st.text_area("Meddelande", key="meddelande")
 
-        submitted = st.form_submit_button("Spara")
-
+        submitted = st.form_submit_button("Spara logg")
         if submitted:
-            if art.strip() == "":
-                st.error("Ange fiskens art.")
-            else:
-                new_log = {
-                    "username": st.session_state['user'],
-                    "datum": datum.strftime("%Y-%m-%d"),
-                    "art": art,
-                    "vikt": vikt,
-                    "langd": langd,
-                    "plats": plats,
-                    "meddelande": meddelande
-                }
-                logs_df = pd.concat([logs_df, pd.DataFrame([new_log])], ignore_index=True)
-                save_logs(logs_df)
-                st.success("Fångsten sparad!")
-                st.session_state['page'] = "home"
-                st.experimental_rerun()
-                return
+            global df
+            ny_post = {
+                "username": st.session_state.user,
+                "datum": datum.strftime("%Y-%m-%d"),
+                "art": art,
+                "vikt": vikt,
+                "langd": langd,
+                "plats": plats,
+                "meddelande": meddelande,
+            }
+            df = pd.concat([df, pd.DataFrame([ny_post])], ignore_index=True)
+            df.to_csv("fangster.csv", index=False)
+            st.success("Fångst sparad!")
+            st.session_state.page = "home"
+            st.experimental_rerun()
+            return
 
-    if st.button("Tillbaka"):
-        st.session_state['page'] = "home"
+    if st.button("Tillbaka", use_container_width=True):
+        st.session_state.page = "home"
         st.experimental_rerun()
         return
 
-# --- Visa användarens fångster ---
+
+# --- Visa mina fångster ---
 def visa_mina_fangster():
-    logs_df = load_logs()
-    st.markdown(f"<h2 style='color:{get_random_green_color(0)}'>Mina fångster</h2>", unsafe_allow_html=True)
-    user_logs = logs_df[logs_df["username"] == st.session_state['user']]
-    if user_logs.empty:
-        st.info("Du har inga loggade fångster än.")
-    else:
-        st.dataframe(user_logs.drop(columns=["username"]), use_container_width=True)
+    st.markdown(f'<h2 style="color:{random_green()};">Mina fångster</h2>', unsafe_allow_html=True)
 
-    if st.button("Tillbaka"):
-        st.session_state['page'] = "home"
+    global df
+    mina_fangster = df[df["username"] == st.session_state.user]
+
+    if mina_fangster.empty:
+        st.info("Du har inga registrerade fångster än.")
+    else:
+        for idx, row in mina_fangster.iterrows():
+            st.markdown(f"""
+                <div style='background-color:{BEIGE}; padding:10px; margin-bottom:10px; border-radius:8px;'>
+                    <b style="color:{random_green()};">Datum:</b> {row['datum']} <br>
+                    <b style="color:{random_green()};">Art:</b> {row['art']} <br>
+                    <b style="color:{random_green()};">Vikt (kg):</b> {row['vikt']} <br>
+                    <b style="color:{random_green()};">Längd (cm):</b> {row['langd']} <br>
+                    <b style="color:{random_green()};">Plats:</b> {row['plats']} <br>
+                    <b style="color:{random_green()};">Meddelande:</b> {row['meddelande']} <br>
+                </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("**Vill du ta bort en logg?**")
+        idx_to_delete = st.selectbox("Välj logg att ta bort (Datum - Art)", 
+                                    options=[f"{row['datum']} - {row['art']}" for _, row in mina_fangster.iterrows()])
+        if st.button("Ta bort vald logg"):
+            # Hitta raden och ta bort
+            del_index = mina_fangster[(mina_fangster["datum"] + " - " + mina_fangster["art"]) == idx_to_delete].index[0]
+            df.drop(index=del_index, inplace=True)
+            df.to_csv("fangster.csv", index=False)
+            st.success("Logg borttagen!")
+            st.experimental_rerun()
+            return
+
+    if st.button("Tillbaka", use_container_width=True):
+        st.session_state.page = "home"
         st.experimental_rerun()
         return
 
-# --- Huvudfunktion ---
-def main():
-    st.set_page_config(page_title="Fiskeloggen", page_icon="🎣", layout="centered")
 
-    # CSS för bakgrund och textfärger
+# --- Main-funktion som styr navigation ---
+def main():
+    if "page" not in st.session_state:
+        st.session_state.page = "startsida"
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "user" not in st.session_state:
+        st.session_state.user = None
+
+    # Färg för hela appen
     st.markdown(f"""
     <style>
-        .stApp {{
-            background-color: {BEIGE_BG};
-            color: {GRON_FARGER[0]} !important;
-        }}
-        label, h1, h2, h3, h4, h5, h6, p {{
-            color: {GRON_FARGER[1]} !important;
-        }}
-        input[type="text"], input[type="password"], input[type="number"], textarea {{
-            color: {GRON_FARGER[2]} !important;
-            background-color: #f9f9f9;
-        }}
-        ::placeholder {{
-            color: {GRON_FARGER[3]} !important;
-        }}
-        div.stButton > button:first-child {{
-            background-color: {GRON_FARGER[4]} !important;
-            color: {BEIGE_BG} !important;
-            font-weight: bold;
-        }}
-        div.stButton > button:first-child:hover {{
-            background-color: {GRON_FARGER[5]} !important;
-            color: {BEIGE_BG} !important;
-        }}
+    .stApp {{
+        background-color: {BEIGE};
+        color: {BLACK};
+    }}
+    /* Ändra placeholder text färg i inputs (mörkgrönt) */
+    input::placeholder, textarea::placeholder {{
+        color: {GREENS[1]} !important;
+        opacity: 1 !important;
+    }}
+    /* Ändra etikettfärg i formulär */
+    label {{
+        color: {GREENS[2]} !important;
+        font-weight: bold;
+    }}
+    /* Ändra knapptext och bakgrund */
+    button {{
+        background-color: {GREENS[3]} !important;
+        color: {BEIGE} !important;
+        font-weight: bold;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-    if 'page' not in st.session_state:
-        st.session_state['page'] = "start"
+    if not st.session_state.logged_in:
+        if st.session_state.page == "startsida":
+            startsida()
+        elif st.session_state.page == "login":
+            login()
+        elif st.session_state.page == "register":
+            register()
+        else:
+            # Om något annat värde - visa startsida
+            st.session_state.page = "startsida"
+            st.experimental_rerun()
+    else:
+        # Inloggad användare
+        if st.session_state.page == "home":
+            home()
+        elif st.session_state.page == "ny_logg":
+            ny_logg()
+        elif st.session_state.page == "mina_fangster":
+            visa_mina_fangster()
+        else:
+            # Om något annat värde - hem sidan
+            st.session_state.page = "home"
+            st.experimental_rerun()
 
-    page = st.session_state['page']
-
-    if page == "start":
-        startsida()
-    elif page == "login":
-        login()
-    elif page == "register":
-        register()
-    elif page == "home":
-        if 'user' not in st.session_state:
-            st.session_state['page'] = "start"
-            st.experimental_rerun()
-            return
-        home()
-    elif page == "ny_logg":
-        if 'user' not in st.session_state:
-            st.session_state['page'] = "start"
-            st.experimental_rerun()
-            return
-        ny_logg()
-    elif page == "mina_fangster":
-        if 'user' not in st.session_state:
-            st.session_state['page'] = "start"
-            st.experimental_rerun()
-            return
-        visa_mina_fangster()
 
 if __name__ == "__main__":
     main()
+    
