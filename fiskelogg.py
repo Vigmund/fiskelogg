@@ -77,7 +77,7 @@ def set_custom_theme():
             color: #30694B;
             opacity: 0.7;
         }}
-        /* Göm inbyggda input-labels men visa våra egna */
+        /* Döljer Streamlits default label, vi använder våra egna */
         div[data-baseweb="input"] > label,
         textarea[data-baseweb="textarea"] > label {{
             display: none !important;
@@ -220,7 +220,7 @@ def main():
         with col2:
             register()
     else:
-        st.markdown(f"<h2>Välkommen, {st.session_state.logged_in_user}!</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 class='gron4'>Välkommen, {st.session_state.logged_in_user}!</h2>", unsafe_allow_html=True)
         meny = st.sidebar.radio("Meny", ["Ny logg", "Mina fångster", "Logga ut"])
 
         if meny == "Ny logg":
