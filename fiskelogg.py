@@ -1,43 +1,50 @@
 import streamlit as st
 import pandas as pd
-import os
-import random
+from datetime import datetime
 
-LOGG_FIL = "loggar.csv"
-USERS_FIL = "users.csv"
+# --- Globala DataFrames och datafiler ---
+USERS_FILE = "users.csv"
+LOGS_FILE = "logs.csv"
 
-# Gröna färger som vi ska använda för text med variation
+# Grön färglista
 GRONA_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
 
 def load_users():
-    if os.path.exists(USERS_FIL):
-        return pd.read_csv(USERS_FIL)
-    else:
+    try:
+        return pd.read_csv(USERS_FILE)
+    except FileNotFoundError:
         return pd.DataFrame(columns=["username", "password"])
 
+def save_users(df):
+    df.to_csv(USERS_FILE, index=False)
+
 def load_logs():
-    if os.path.exists(LOGG_FIL):
-        return pd.read_csv(LOGG_FIL)
-    else:
+    try:
+        return pd.read_csv(LOGS_FILE)
+    except FileNotFoundError:
         return pd.DataFrame(columns=["username", "Datum", "Art", "Vikt (kg)", "Längd (cm)", "Plats", "Meddelande", "Bild"])
 
-def save_users(df):
-    df.to_csv(USERS_FIL, index=False)
-
 def save_logs(df):
-    df.to_csv(LOGG_FIL, index=False)
+    df.to_csv(LOGS_FILE, index=False)
 
-users_df = load_users()
-logs_df = load_logs()
+# Ladda data i session state (endast första gången)
+if "users_df" not in st.session_state:
+    st.session_state.users_df = load_users()
 
-def get_random_gron_farg():
-    return random.choice(GRONA_FARGER)
+if "logs_df" not in st.session_state:
+    st.session_state.logs_df = load_logs()
 
+# Session state login
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "logged_in_user" not in st.session_state:
+    st.session_state.logged_in_user = ""
+
+# --- CSS och layout ---
 def set_custom_theme():
-    # Generera CSS för text med varierande gröna färger (genom klasser)
-    grona_css = "\n".join(
-        [f".gron{i} {{ color: {farg}; }}" for i, farg in enumerate(GRONA_FARGER)]
-    )
+    grona_css = ""
+    for i, farg in enumerate(GRONA_FARGER):
+        grona_css += f".gron{i} {{color: {farg}; font-weight: 600;}}\n"
 
     st.markdown(
         f"""
@@ -57,6 +64,7 @@ def set_custom_theme():
             padding: 8px 18px;
             font-weight: 600;
             border: none;
+            margin-top: 10px;
         }}
         .stButton > button:hover {{
             background-color: #62BD69;
@@ -66,6 +74,13 @@ def set_custom_theme():
             border-radius: 6px;
             border: 1px solid #358856;
             padding: 6px;
+            background-color: white;
+            color: #25523B;
+        }}
+        /* Göm input-labels */
+        div[data-baseweb="input"] > label,
+        textarea[data-baseweb="textarea"] > label {{
+            display: none !important;
         }}
         .streamlit-expanderHeader {{
             color: #0C3823;
@@ -77,128 +92,79 @@ def set_custom_theme():
         unsafe_allow_html=True,
     )
 
-set_custom_theme()
-
-if "page" not in st.session_state:
-    st.session_state.page = "login"
-
-if "logged_in_user" not in st.session_state:
-    st.session_state.logged_in_user = None
-
 def colored_label(text):
-    i = random.randint(0, len(GRONA_FARGER)-1)
-    return f"<span class='gron{i}'>{text}</span>"
+    # Returnerar en label i random grön färg från listan, fet stil
+    from random import choice
+    farg = choice(GRONA_FARGER)
+    return f"<span style='color:{farg}; font-weight:600;'>{text}</span>"
+
+# --- Funktioner för inloggning/registrering ---
+def login():
+    st.markdown("<h2 class='gron0'>Logga in</h2>", unsafe_allow_html=True)
+    with st.form("login_form"):
+        username = st.text_input("Användarnamn", key="login_username")
+        password = st.text_input("Lösenord", type="password", key="login_password")
+        submitted = st.form_submit_button("Logga in")
+        if submitted:
+            df = st.session_state.users_df
+            user_row = df[(df["username"] == username) & (df["password"] == password)]
+            if not user_row.empty:
+                st.session_state.logged_in = True
+                st.session_state.logged_in_user = username
+                st.success(f"Välkommen tillbaka, {username}!")
+                st.experimental_rerun()
+            else:
+                st.error("Fel användarnamn eller lösenord")
 
 def register():
-    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Registrera nytt konto</h1>", unsafe_allow_html=True)
-    st.markdown(colored_label("Användarnamn"), unsafe_allow_html=True)
-    username = st.text_input("", key="reg_user")
-    st.markdown(colored_label("Lösenord"), unsafe_allow_html=True)
-    password = st.text_input("", type="password", key="reg_pw")
-
-    if st.button("Registrera"):
-        global users_df
-        if username.strip() == "" or password.strip() == "":
-            st.warning("Användarnamn och lösenord får inte vara tomma.")
-        elif username in users_df["username"].values:
-            st.error("Användarnamnet är upptaget, välj ett annat.")
-        else:
-            ny_user = {"username": username, "password": password}
-            users_df = pd.concat([users_df, pd.DataFrame([ny_user])], ignore_index=True)
-            save_users(users_df)
-            st.success("Konto skapat! Logga in nu.")
-            st.session_state.page = "login"
-
-    if st.button("Tillbaka till inloggning"):
-        st.session_state.page = "login"
-
-def login():
-    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Logga in</h1>", unsafe_allow_html=True)
-    st.markdown(colored_label("Användarnamn"), unsafe_allow_html=True)
-    username = st.text_input("", key="login_user")
-    st.markdown(colored_label("Lösenord"), unsafe_allow_html=True)
-    password = st.text_input("", type="password", key="login_pw")
-
-    if st.button("Logga in"):
-        global users_df
-        if (users_df["username"] == username).any():
-            correct_password = users_df.loc[users_df["username"] == username, "password"].values[0]
-            if password == correct_password:
-                st.success(f"Välkommen, {username}!")
-                st.session_state.logged_in_user = username
-                st.session_state.page = "home"
+    st.markdown("<h2 class='gron1'>Registrera nytt konto</h2>", unsafe_allow_html=True)
+    with st.form("register_form"):
+        username = st.text_input("Välj användarnamn", key="register_username")
+        password = st.text_input("Välj lösenord", type="password", key="register_password")
+        submitted = st.form_submit_button("Registrera")
+        if submitted:
+            df = st.session_state.users_df
+            if username in df["username"].values:
+                st.error("Användarnamnet är redan taget, välj ett annat.")
+            elif username == "" or password == "":
+                st.error("Användarnamn och lösenord får inte vara tomma.")
             else:
-                st.error("Fel lösenord.")
-        else:
-            st.error("Användarnamnet finns inte.")
+                new_user = {"username": username, "password": password}
+                st.session_state.users_df = pd.concat([df, pd.DataFrame([new_user])], ignore_index=True)
+                save_users(st.session_state.users_df)
+                st.success("Konto skapat! Logga in ovan.")
+                st.experimental_rerun()
 
-    if st.button("Registrera nytt konto"):
-        st.session_state.page = "register"
+def logout():
+    st.session_state.logged_in = False
+    st.session_state.logged_in_user = ""
+    st.experimental_rerun()
 
-def visa_mina_fangster():
-    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Mina fångster</h1>", unsafe_allow_html=True)
-    global logs_df
-    user_logs = logs_df[logs_df["username"] == st.session_state.logged_in_user]
-
-    if user_logs.empty:
-        st.info("Du har inga fångster ännu.")
-    else:
-        for i, row in user_logs.iterrows():
-            with st.expander(f"{row['Datum']} – {row['Art']}"):
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Plats')}: {row['Plats']}</p>", unsafe_allow_html=True)
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Vikt')}: {row['Vikt (kg)']} kg</p>", unsafe_allow_html=True)
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Längd')}: {row.get('Längd (cm)', 'N/A')} cm</p>", unsafe_allow_html=True)
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Meddelande')}: {row.get('Meddelande', '')}</p>", unsafe_allow_html=True)
-                if pd.notna(row['Bild']) and row['Bild'] != "":
-                    st.image(row['Bild'], width=200)
-
-                if f"ta_bort_{i}" not in st.session_state:
-                    st.session_state[f"ta_bort_{i}"] = False
-
-                if not st.session_state[f"ta_bort_{i}"]:
-                    if st.button("Ta bort logg", key=f"btn_{i}"):
-                        st.session_state[f"ta_bort_{i}"] = True
-                else:
-                    st.warning("Är du säker på att du vill slänga tillbaks den här fisken i sjön?")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Ja, ta bort", key=f"ja_{i}"):
-                            logs_df = logs_df.drop(row.name)
-                            save_logs(logs_df)
-                            st.success("Logg borttagen!")
-                            st.session_state.page = "mina_fangster"
-                            st.session_state[f"ta_bort_{i}"] = False
-                    with col2:
-                        if st.button("Nej", key=f"nej_{i}"):
-                            st.session_state[f"ta_bort_{i}"] = False
-
-    if st.button("Tillbaka"):
-        st.session_state.page = "home"
-
+# --- Ny logg funktion med fixad form och layout ---
 def ny_logg():
-    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Ny logg</h1>", unsafe_allow_html=True)
-    global logs_df
+    st.markdown(f"<h1 class='gron2'>Ny logg</h1>", unsafe_allow_html=True)
+    df = st.session_state.logs_df
 
     with st.form("form_ny_logg"):
         st.markdown(colored_label("Datum"))
-        datum = st.date_input("")
+        datum = st.date_input("", key="datum_input")
         st.markdown(colored_label("Art"))
-        art = st.text_input("")
+        art = st.text_input("", key="art_input")
         st.markdown(colored_label("Vikt (kg)"))
-        vikt = st.number_input("", min_value=0.0, format="%.2f")
+        vikt = st.number_input("", min_value=0.0, format="%.2f", key="vikt_input")
         st.markdown(colored_label("Längd (cm)"))
-        langd = st.number_input("", min_value=0, format="%d")
+        langd = st.number_input("", min_value=0, format="%d", key="langd_input")
         st.markdown(colored_label("Plats"))
-        plats = st.text_input("")
+        plats = st.text_input("", key="plats_input")
         st.markdown(colored_label("Meddelande"))
-        meddelande = st.text_area("")
+        meddelande = st.text_area("", key="meddelande_input")
         st.markdown(colored_label("Bild (URL)"))
-        bild = st.text_input("")
+        bild = st.text_input("", key="bild_input")
 
         submitted = st.form_submit_button("Spara logg")
 
         if submitted:
-            ny_logg = {
+            ny_rad = {
                 "username": st.session_state.logged_in_user,
                 "Datum": datum.strftime("%Y-%m-%d"),
                 "Art": art,
@@ -208,34 +174,65 @@ def ny_logg():
                 "Meddelande": meddelande,
                 "Bild": bild,
             }
-            logs_df = pd.concat([logs_df, pd.DataFrame([ny_logg])], ignore_index=True)
-            save_logs(logs_df)
+            st.session_state.logs_df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
+            save_logs(st.session_state.logs_df)
             st.success("Logg sparad!")
-            st.session_state.page = "mina_fangster"
+            st.experimental_rerun()
 
-def home():
-    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>🎣 Fiskeloggen</h1>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Mina fångster", use_container_width=True):
-            st.session_state.page = "mina_fangster"
-    with col2:
-        if st.button("Ny logg", use_container_width=True):
-            st.session_state.page = "ny_logg"
+# --- Visa mina fångster med ta bort knapp ---
+def visa_mina_fangster():
+    st.markdown(f"<h1 class='gron3'>Mina fångster</h1>", unsafe_allow_html=True)
+    df = st.session_state.logs_df
+    user = st.session_state.logged_in_user
 
-    if st.button("Logga ut"):
-        st.session_state.logged_in_user = None
-        st.session_state.page = "login"
+    mina_fangster = df[df["username"] == user]
 
-if st.session_state.page == "login":
-    login()
-elif st.session_state.page == "register":
-    register()
-elif st.session_state.page == "home":
-    home()
-elif st.session_state.page == "mina_fangster":
-    visa_mina_fangster()
-elif st.session_state.page == "ny_logg":
-    ny_logg()
-else:
-    st.error("Okänt läge!")
+    if mina_fangster.empty:
+        st.info("Du har inga sparade fångster än.")
+        return
+
+    for idx, rad in mina_fangster.iterrows():
+        st.markdown(f"### {rad['Datum']} - {rad['Art']}")
+        st.write(f"Vikt: {rad['Vikt (kg)']} kg")
+        st.write(f"Längd: {rad['Längd (cm)']} cm")
+        st.write(f"Plats: {rad['Plats']}")
+        st.write(f"Meddelande: {rad['Meddelande']}")
+        if rad['Bild']:
+            st.image(rad['Bild'], use_column_width=True)
+
+        # Bekräftelse för att ta bort
+        if st.button(f"Ta bort logg #{idx}", key=f"ta_bort_{idx}"):
+            confirm = st.radio(
+                "Är du säker på att du vill slänga tillbaks den här fisken i sjön?",
+                ("Nej", "Ja"),
+                key=f"confirm_{idx}",
+            )
+            if confirm == "Ja":
+                st.session_state.logs_df = df.drop(idx).reset_index(drop=True)
+                save_logs(st.session_state.logs_df)
+                st.success("Logg borttagen!")
+                st.experimental_rerun()
+
+# --- Huvudfunktion ---
+def main():
+    set_custom_theme()
+
+    if not st.session_state.logged_in:
+        tab = st.radio("Välj", ("Logga in", "Registrera konto"))
+        if tab == "Logga in":
+            login()
+        else:
+            register()
+    else:
+        st.markdown(f"<h2 class='gron4'>Välkommen, {st.session_state.logged_in_user}!</h2>", unsafe_allow_html=True)
+        meny = st.sidebar.radio("Meny", ["Ny logg", "Mina fångster", "Logga ut"])
+
+        if meny == "Ny logg":
+            ny_logg()
+        elif meny == "Mina fångster":
+            visa_mina_fangster()
+        elif meny == "Logga ut":
+            logout()
+
+if __name__ == "__main__":
+    main()
