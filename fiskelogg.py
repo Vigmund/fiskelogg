@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="Fiskeloggen", page_icon="🐟", layout="wide")
+st.set_page_config(page_title="Fiskeloggen", page_icon="🐟", layout="centered")
 
 st.markdown(
     """
@@ -16,11 +16,10 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 DATAFIL = "fiskeloggar.csv"
 
 def safe_rerun():
-    st.rerun()
+    st.experimental_rerun()
 
 def läs_data():
     if os.path.exists(DATAFIL):
@@ -32,59 +31,65 @@ def spara_data(df):
     df.to_csv(DATAFIL, index=False)
 
 def startsida():
-    st.title("🐟 Fiskeloggen")
-
     if "inloggad" not in st.session_state:
         st.session_state.inloggad = False
     if "page" not in st.session_state:
         st.session_state.page = None
+    if "användare" not in st.session_state:
+        st.session_state.användare = ""
+
+    st.title("🐟 Fiskeloggen")
 
     if not st.session_state.inloggad:
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Logga in", key="btn_logga_in_start"):
-                st.session_state.page = "login"
-        with col2:
-            if st.button("Skapa konto", key="btn_skapa_konto_start"):
-                st.session_state.page = "register"
-
-        if st.session_state.page == "login":
+        if st.session_state.page is None:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Logga in", key="btn_logga_in"):
+                    st.session_state.page = "login"
+            with col2:
+                if st.button("Skapa konto", key="btn_skapa_konto"):
+                    st.session_state.page = "register"
+        elif st.session_state.page == "login":
             login()
+            if st.button("Tillbaka", key="btn_tillbaka_login"):
+                st.session_state.page = None
         elif st.session_state.page == "register":
             register()
-        else:
-            st.info("Välj ett alternativ ovanför för att logga in eller skapa konto.")
-    else:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("Logga ny fisk", key="btn_logga_ny_fisk"):
-                st.session_state.page = "ny_logg"
-        with col2:
-            if st.button("Mina loggar", key="btn_mina_loggar"):
-                st.session_state.page = "home"
-        with col3:
-            if st.button("Logga ut", key="btn_logga_ut"):
-                st.session_state.inloggad = False
-                st.session_state.användare = ""
+            if st.button("Tillbaka", key="btn_tillbaka_register"):
                 st.session_state.page = None
-                safe_rerun()
 
-        if st.session_state.page == "ny_logg":
+    else:
+        if st.session_state.page is None:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("Logga ny fisk", key="btn_logga_ny_fisk"):
+                    st.session_state.page = "ny_logg"
+            with col2:
+                if st.button("Mina loggar", key="btn_mina_loggar"):
+                    st.session_state.page = "home"
+            with col3:
+                if st.button("Logga ut", key="btn_logga_ut"):
+                    st.session_state.inloggad = False
+                    st.session_state.användare = ""
+                    st.session_state.page = None
+                    safe_rerun()
+        elif st.session_state.page == "ny_logg":
             ny_logg()
+            if st.button("Tillbaka", key="btn_tillbaka_ny_logg"):
+                st.session_state.page = None
         elif st.session_state.page == "home":
             home()
-        else:
-            st.info("Välj ett alternativ ovanför för att fortsätta.")
+            if st.button("Tillbaka", key="btn_tillbaka_home"):
+                st.session_state.page = None
 
 def login():
     st.subheader("Logga in")
-    användarnamn = st.text_input("Användarnamn", key="input_anvandarnamn_login")
-    lösenord = st.text_input("Lösenord", type="password", key="input_losenord_login")
+    användarnamn = st.text_input("Användarnamn", key="login_anvandarnamn")
+    lösenord = st.text_input("Lösenord", type="password", key="login_losenord")
     if st.button("Logga in", key="btn_logga_in_login"):
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
-            st.session_state.page = None
             st.success("Inloggning lyckades!")
             safe_rerun()
         else:
@@ -92,13 +97,12 @@ def login():
 
 def register():
     st.subheader("Skapa konto")
-    användarnamn = st.text_input("Välj användarnamn", key="input_anvandarnamn_register")
-    lösenord = st.text_input("Välj lösenord", type="password", key="input_losenord_register")
+    användarnamn = st.text_input("Välj användarnamn", key="register_anvandarnamn")
+    lösenord = st.text_input("Välj lösenord", type="password", key="register_losenord")
     if st.button("Skapa konto", key="btn_skapa_konto_register"):
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
-            st.session_state.page = None
             st.success("Konto skapades!")
             safe_rerun()
         else:
@@ -130,12 +134,12 @@ def home():
 
 def ny_logg():
     st.title("➕ Logga ny fisk")
-    art = st.text_input("Vilken art fångade du?", key="input_art_nylogg")
-    plats = st.text_input("Var fångade du den?", key="input_plats_nylogg")
-    längd = st.number_input("Hur lång var fisken? (cm)", min_value=0.0, step=0.1, key="input_langd_nylogg")
-    vikt = st.number_input("Hur mycket vägde den? (kg)", min_value=0.0, step=0.1, key="input_vikt_nylogg")
-    datum = st.date_input("När fångades fisken?", value=datetime.today(), key="input_datum_nylogg")
-    bild = st.file_uploader("Ladda upp en bild (valfritt)", type=["jpg", "jpeg", "png"], key="input_bild_nylogg")
+    art = st.text_input("Vilken art fångade du?", key="nylogg_art")
+    plats = st.text_input("Var fångade du den?", key="nylogg_plats")
+    längd = st.number_input("Hur lång var fisken? (cm)", min_value=0.0, step=0.1, key="nylogg_langd")
+    vikt = st.number_input("Hur mycket vägde den? (kg)", min_value=0.0, step=0.1, key="nylogg_vikt")
+    datum = st.date_input("När fångades fisken?", value=datetime.today(), key="nylogg_datum")
+    bild = st.file_uploader("Ladda upp en bild (valfritt)", type=["jpg", "jpeg", "png"], key="nylogg_bild")
 
     if st.button("Spara logg", key="btn_spara_logg"):
         if not art or not plats:
@@ -144,8 +148,8 @@ def ny_logg():
 
         bildfilnamn = ""
         if bild:
-            bildfilnamn = f"bilder/{datetime.now().strftime('%Y%m%d%H%M%S')}_{bild.name}"
             os.makedirs("bilder", exist_ok=True)
+            bildfilnamn = f"bilder/{datetime.now().strftime('%Y%m%d%H%M%S')}_{bild.name}"
             with open(bildfilnamn, "wb") as f:
                 f.write(bild.read())
 
@@ -165,5 +169,4 @@ def ny_logg():
         st.success("Fångsten sparades!")
         safe_rerun()
 
-# Starta appen
 startsida()
