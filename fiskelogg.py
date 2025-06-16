@@ -2,12 +2,6 @@ import streamlit as st
 import pandas as pd
 import os
 
-
-# Skapa mapp för bilder om den inte finns
-if not os.path.exists("bilder"):
-    os.makedirs("bilder")
-
-
 LOGG_FIL = "loggar.csv"
 
 # Läs in loggar
@@ -29,7 +23,7 @@ def visa_mina_fangster():
             with st.expander(f"{row['Datum']} – {row['Art']}"):
                 st.write(f"Plats: {row['Plats']}")
                 st.write(f"Vikt: {row['Vikt (kg)']} kg")
-                if pd.notna(row['Bild']):
+                if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
                     st.image(row['Bild'], width=200)
     if st.button("Tillbaka", key="tillbaka_fangster"):
         st.session_state.page = "home"
@@ -45,7 +39,10 @@ def ny_logg():
 
         submitted = st.form_submit_button("Spara logg")
         if submitted:
-            # Spara bilden lokalt och spara sökväg i CSV (för enkelhetens skull)
+            # Skapa bildmapp om den inte finns
+            os.makedirs("bilder", exist_ok=True)
+
+            # Spara bilden lokalt och spara sökväg i CSV
             bild_path = ""
             if bild is not None:
                 bild_path = f"bilder/{bild.name}"
@@ -53,15 +50,16 @@ def ny_logg():
                     f.write(bild.getbuffer())
 
             ny_rad = {
-    "Datum": datum.strftime("%Y-%m-%d"),
-    "Art": art,
-    "Vikt (kg)": vikt,
-    "Plats": plats,
-    "Bild": bild_path
-}
-global df
-df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
-df.to_csv(LOGG_FIL, index=False)
+                "Datum": datum.strftime("%Y-%m-%d"),
+                "Art": art,
+                "Vikt (kg)": vikt,
+                "Plats": plats,
+                "Bild": bild_path
+            }
+
+            global df
+            df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
+            df.to_csv(LOGG_FIL, index=False)
             st.success("Logg sparad!")
             st.session_state.page = "home"
 
