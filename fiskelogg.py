@@ -14,6 +14,10 @@ else:
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
+# Håller index för vilken logg som ev ska raderas
+if "delete_index" not in st.session_state:
+    st.session_state.delete_index = None
+
 def visa_mina_fangster():
     st.title("Mina fångster")
     if df.empty:
@@ -26,21 +30,34 @@ def visa_mina_fangster():
                 if pd.notna(row['Bild']):
                     st.image(row['Bild'], width=200)
 
-                if st.button("Ta bort logg", key=f"delete_{i}"):
-                    # Radera eventuell bildfil
-                    if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
-                        os.remove(row['Bild'])
+                if st.session_state.delete_index is None:
+                    if st.button("Ta bort logg", key=f"delete_{i}"):
+                        st.session_state.delete_index = i
+                        st.experimental_rerun()
+                elif st.session_state.delete_index == i:
+                    st.warning("Är du säker på att du vill slänga tillbaks den här fisken i sjön?")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Ja, ta bort"):
+                            # Radera eventuell bildfil
+                            if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
+                                os.remove(row['Bild'])
+                            global df
+                            df.drop(i, inplace=True)
+                            df.reset_index(drop=True, inplace=True)
+                            df.to_csv(LOGG_FIL, index=False)
 
-                    df.drop(i, inplace=True)
-                    df.reset_index(drop=True, inplace=True)
-                    df.to_csv(LOGG_FIL, index=False)
-
-                    st.session_state.page = "mina_fangster"
-                    st.query_params.clear()  # Nyare sätt än experimental_set_query_params
-                    st.success("Logg borttagen!")
-                    return
+                            st.success("Logg borttagen!")
+                            st.session_state.delete_index = None
+                            st.session_state.page = "mina_fangster"
+                            st.experimental_rerun()
+                    with col2:
+                        if st.button("Nej, ångra"):
+                            st.session_state.delete_index = None
+                            st.experimental_rerun()
 
     if st.button("Tillbaka", key="tillbaka_fangster"):
+        st.session_state.delete_index = None
         st.session_state.page = "home"
 
 def ny_logg():
@@ -54,7 +71,6 @@ def ny_logg():
 
         submitted = st.form_submit_button("Spara logg")
         if submitted:
-            # Skapa mapp om den inte finns
             os.makedirs("bilder", exist_ok=True)
 
             bild_path = ""
