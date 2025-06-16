@@ -45,9 +45,11 @@ def startsida():
     if st.button("Logga in"):
         st.session_state['page'] = "login"
         st.experimental_rerun()
+        return
     if st.button("Skapa konto"):
         st.session_state['page'] = "register"
         st.experimental_rerun()
+        return
 
 def register():
     global users_df
@@ -69,12 +71,12 @@ def register():
             st.success("Kontot skapat! Logga in med dina uppgifter.")
             st.session_state['page'] = "login"
             st.experimental_rerun()
-            return  # Viktigt: direkt return efter rerun
+            return
 
     if st.button("Tillbaka"):
         st.session_state['page'] = "start"
         st.experimental_rerun()
-        return  # Viktigt även här
+        return
 
 def login():
     global users_df
@@ -192,23 +194,19 @@ def main():
     st.set_page_config(page_title="Fiskeloggen", page_icon="🎣", layout="centered")
     st.markdown(f"""
     <style>
-        /* Bakgrund och textfärger */
         .stApp {{
             background-color: {BEIGE_BG};
             color: {GRON_FARGER[0]} !important;
         }}
-        /* Label och rubriker */
         label, h1, h2, h3, h4, h5, h6 {{
             color: {GRON_FARGER[1]} !important;
         }}
-        /* Inputfältens text och placeholders */
         input[type="text"], input[type="password"], input[type="number"], textarea {{
             color: {GRON_FARGER[2]} !important;
         }}
         ::placeholder {{
             color: {GRON_FARGER[3]} !important;
         }}
-        /* Buttons färg */
         div.stButton > button:first-child {{
             background-color: {GRON_FARGER[4]} !important;
             color: {BEIGE_BG} !important;
@@ -224,25 +222,27 @@ def main():
     if 'page' not in st.session_state:
         st.session_state['page'] = "start"
 
-    if st.session_state['page'] == "start":
+    page = st.session_state['page']
+
+    if page == "start":
         startsida()
-    elif st.session_state['page'] == "login":
+    elif page == "login":
         login()
-    elif st.session_state['page'] == "register":
+    elif page == "register":
         register()
-    elif st.session_state['page'] == "home":
+    elif page == "home":
         if 'user' not in st.session_state:
             st.session_state['page'] = "start"
             st.experimental_rerun()
             return
         home()
-    elif st.session_state['page'] == "ny_logg":
+    elif page == "ny_logg":
         if 'user' not in st.session_state:
             st.session_state['page'] = "start"
             st.experimental_rerun()
             return
         ny_logg()
-    elif st.session_state['page'] == "mina_fangster":
+    elif page == "mina_fangster":
         if 'user' not in st.session_state:
             st.session_state['page'] = "start"
             st.experimental_rerun()
