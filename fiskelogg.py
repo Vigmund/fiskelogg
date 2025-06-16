@@ -10,16 +10,16 @@ if os.path.exists(LOGG_FIL):
 else:
     df = pd.DataFrame(columns=["Datum", "Art", "Vikt (kg)", "Plats", "Bild"])
 
-# Initiera sidan i session_state om inte satt
+# Initiera session_state variabler
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
 if "delete_index" not in st.session_state:
     st.session_state.delete_index = None
-if "confirm_delete" not in st.session_state:
-    st.session_state.confirm_delete = False
-if "do_delete" not in st.session_state:
-    st.session_state.do_delete = False
+if "show_confirm" not in st.session_state:
+    st.session_state.show_confirm = False
+if "message" not in st.session_state:
+    st.session_state.message = ""
 
 def visa_mina_fangster():
     st.title("Mina fångster")
@@ -34,24 +34,40 @@ def visa_mina_fangster():
                 if pd.notna(row['Bild']) and row['Bild'] != "":
                     st.image(row['Bild'], width=200)
 
-                if st.session_state.delete_index is None:
+                if not st.session_state.show_confirm:
                     if st.button("Ta bort logg", key=f"delete_{i}"):
                         st.session_state.delete_index = i
-                elif st.session_state.delete_index == i:
+                        st.session_state.show_confirm = True
+                elif st.session_state.show_confirm and st.session_state.delete_index == i:
                     st.warning("Är du säker på att du vill slänga tillbaks den här fisken i sjön?")
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("Ja, ta bort", key=f"confirm_{i}"):
-                            st.session_state.confirm_delete = True
+                            ta_bort_logg(i)
+                            st.session_state.show_confirm = False
+                            st.session_state.delete_index = None
+                            st.session_state.message = "Logg borttagen!"
                     with col2:
                         if st.button("Nej, ångra", key=f"cancel_{i}"):
+                            st.session_state.show_confirm = False
                             st.session_state.delete_index = None
-                            st.session_state.confirm_delete = False
 
     if st.button("Tillbaka", key="tillbaka_fangster"):
-        st.session_state.delete_index = None
-        st.session_state.confirm_delete = False
         st.session_state.page = "home"
+        st.session_state.show_confirm = False
+        st.session_state.delete_index = None
+
+def ta_bort_logg(index):
+    global df
+    row = df.iloc[index]
+
+    # Ta bort bildfil om den finns
+    if pd.notna(row['Bild']) and row['Bild'] != "" and os.path.exists(row['Bild']):
+        os.remove(row['Bild'])
+
+    df = df.drop(index)
+    df = df.reset_index(drop=True)
+    df.to_csv(LOGG_FIL, index=False)
 
 def ny_logg():
     global df
@@ -92,6 +108,9 @@ def ny_logg():
 # Huvudmeny och sidlogik
 if st.session_state.page == "home":
     st.title("🎣 Fiskeloggen")
+    if st.session_state.message:
+        st.success(st.session_state.message)
+        st.session_state.message = ""  # Nollställ meddelande efter visning
     if st.button("Mina fångster"):
         st.session_state.page = "mina_fangster"
     if st.button("Ny logg"):
@@ -99,24 +118,6 @@ if st.session_state.page == "home":
 
 elif st.session_state.page == "mina_fangster":
     visa_mina_fangster()
-
-    # Här gör vi själva borttagningen och rerun UTANFÖR funktionen
-    if st.session_state.confirm_delete and st.session_state.delete_index is not None:
-        i = st.session_state.delete_index
-        row = df.iloc[i]
-
-        # Ta bort bildfil om den finns
-        if pd.notna(row['Bild']) and row['Bild'] != "" and os.path.exists(row['Bild']):
-            os.remove(row['Bild'])
-
-        df.drop(i, inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        df.to_csv(LOGG_FIL, index=False)
-
-        # Nollställ session state och rerun sidan
-        st.session_state.delete_index = None
-        st.session_state.confirm_delete = False
-        st.experimental_rerun()
 
 elif st.session_state.page == "ny_logg":
     ny_logg()
