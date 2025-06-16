@@ -1,9 +1,13 @@
 import streamlit as st
 import pandas as pd
 import os
+import random
 
 LOGG_FIL = "loggar.csv"
 USERS_FIL = "users.csv"
+
+# Gröna färger som vi ska använda för text med variation
+GRONA_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
 
 def load_users():
     if os.path.exists(USERS_FIL):
@@ -15,7 +19,7 @@ def load_logs():
     if os.path.exists(LOGG_FIL):
         return pd.read_csv(LOGG_FIL)
     else:
-        return pd.DataFrame(columns=["username", "Datum", "Art", "Vikt (kg)", "Plats", "Bild"])
+        return pd.DataFrame(columns=["username", "Datum", "Art", "Vikt (kg)", "Längd (cm)", "Plats", "Meddelande", "Bild"])
 
 def save_users(df):
     df.to_csv(USERS_FIL, index=False)
@@ -26,39 +30,48 @@ def save_logs(df):
 users_df = load_users()
 logs_df = load_logs()
 
+def get_random_gron_farg():
+    return random.choice(GRONA_FARGER)
+
 def set_custom_theme():
+    # Generera CSS för text med varierande gröna färger (genom klasser)
+    grona_css = "\n".join(
+        [f".gron{i} {{ color: {farg}; }}" for i, farg in enumerate(GRONA_FARGER)]
+    )
+
     st.markdown(
-        """
+        f"""
         <style>
-        .stApp {
+        .stApp {{
             background-color: #EDE8D0;
             color: #25523B;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .css-1v3fvcr h1 {
+        }}
+        .css-1v3fvcr h1 {{
             color: #30694B;
-        }
-        .stButton > button {
+        }}
+        .stButton > button {{
             background-color: #5AAB61;
             color: white;
             border-radius: 8px;
             padding: 8px 18px;
             font-weight: 600;
             border: none;
-        }
-        .stButton > button:hover {
+        }}
+        .stButton > button:hover {{
             background-color: #62BD69;
             color: white;
-        }
-        input, textarea {
+        }}
+        input, textarea {{
             border-radius: 6px;
             border: 1px solid #358856;
             padding: 6px;
-        }
-        .streamlit-expanderHeader {
+        }}
+        .streamlit-expanderHeader {{
             color: #0C3823;
             font-weight: 600;
-        }
+        }}
+        {grona_css}
         </style>
         """,
         unsafe_allow_html=True,
@@ -73,7 +86,7 @@ if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
 
 def register():
-    st.title("Registrera nytt konto")
+    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Registrera nytt konto</h1>", unsafe_allow_html=True)
     username = st.text_input("Användarnamn", key="reg_user")
     password = st.text_input("Lösenord", type="password", key="reg_pw")
 
@@ -94,7 +107,7 @@ def register():
         st.session_state.page = "login"
 
 def login():
-    st.title("Logga in")
+    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Logga in</h1>", unsafe_allow_html=True)
     username = st.text_input("Användarnamn", key="login_user")
     password = st.text_input("Lösenord", type="password", key="login_pw")
 
@@ -115,7 +128,7 @@ def login():
         st.session_state.page = "register"
 
 def visa_mina_fangster():
-    st.title("Mina fångster")
+    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Mina fångster</h1>", unsafe_allow_html=True)
     global logs_df
     user_logs = logs_df[logs_df["username"] == st.session_state.logged_in_user]
 
@@ -124,8 +137,10 @@ def visa_mina_fangster():
     else:
         for i, row in user_logs.iterrows():
             with st.expander(f"{row['Datum']} – {row['Art']}"):
-                st.write(f"Plats: {row['Plats']}")
-                st.write(f"Vikt: {row['Vikt (kg)']} kg")
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Plats: {row['Plats']}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Vikt: {row['Vikt (kg)']} kg</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Längd: {row.get('Längd (cm)', 'N/A')} cm</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Meddelande: {row.get('Meddelande', '')}</p>", unsafe_allow_html=True)
                 if pd.notna(row['Bild']) and row['Bild'] != "":
                     st.image(row['Bild'], width=200)
 
@@ -153,14 +168,16 @@ def visa_mina_fangster():
         st.session_state.page = "home"
 
 def ny_logg():
-    st.title("Ny logg")
+    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Ny logg</h1>", unsafe_allow_html=True)
     global logs_df
 
     with st.form("form_ny_logg"):
         datum = st.date_input("Datum")
         art = st.text_input("Art")
         vikt = st.number_input("Vikt (kg)", min_value=0.0, format="%.2f")
+        langd = st.number_input("Längd (cm)", min_value=0, format="%d")
         plats = st.text_input("Plats")
+        meddelande = st.text_area("Meddelande")
         bild = st.file_uploader("Ladda upp bild", type=["png", "jpg", "jpeg"])
 
         submitted = st.form_submit_button("Spara logg")
@@ -179,7 +196,9 @@ def ny_logg():
                 "Datum": datum.strftime("%Y-%m-%d"),
                 "Art": art,
                 "Vikt (kg)": vikt,
+                "Längd (cm)": langd,
                 "Plats": plats,
+                "Meddelande": meddelande,
                 "Bild": bild_path
             }
             logs_df = pd.concat([logs_df, pd.DataFrame([ny_rad])], ignore_index=True)
@@ -191,7 +210,7 @@ def ny_logg():
         st.session_state.page = "home"
 
 def home():
-    st.title("🎣 Fiskeloggen")
+    st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>🎣 Fiskeloggen</h1>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Mina fångster", use_container_width=True):
