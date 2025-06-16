@@ -4,92 +4,139 @@ import os
 import hashlib
 
 LOGG_FIL = "loggar.csv"
-USER_FIL = "users.csv"
+USERS_FIL = "users.csv"
+BILD_MAPP = "bilder"
 
-# Funktion för att hasha lösenord
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+# --- HJÄLPFUNKTIONER ---
 
-# Läs in användare
-if os.path.exists(USER_FIL):
-    users_df = pd.read_csv(USER_FIL)
-else:
-    users_df = pd.DataFrame(columns=["username", "password_hash"])
+def hash_losen(losen):
+    return hashlib.sha256(losen.encode()).hexdigest()
 
-# Läs in loggar, med kolumn för användare
-if os.path.exists(LOGG_FIL):
-    df = pd.read_csv(LOGG_FIL)
-else:
-    df = pd.DataFrame(columns=["Användare", "Datum", "Art", "Vikt (kg)", "Plats", "Bild"])
+def las_in_loggar():
+    if os.path.exists(LOGG_FIL):
+        return pd.read_csv(LOGG_FIL)
+    else:
+        return pd.DataFrame(columns=["Datum", "Art", "Vikt (kg)", "Plats", "Bild", "Användare"])
 
-# Initiera sidan i session_state om inte satt
+def las_in_users():
+    if os.path.exists(USERS_FIL):
+        return pd.read_csv(USERS_FIL)
+    else:
+        return pd.DataFrame(columns=["Användarnamn", "Lösenhash"])
+
+def spara_loggar(df):
+    df.to_csv(LOGG_FIL, index=False)
+
+def spara_users(df):
+    df.to_csv(USERS_FIL, index=False)
+
+def skapa_mapp_om_saknas(mapp):
+    if not os.path.exists(mapp):
+        os.makedirs(mapp)
+
+# --- GLOBALA VARIABLER ---
+if "users_df" not in st.session_state:
+    st.session_state.users_df = las_in_users()
+
+if "df" not in st.session_state:
+    st.session_state.df = las_in_loggar()
+
 if "page" not in st.session_state:
-    st.session_state.page = "login"  # start på inloggningssidan
-if "username" not in st.session_state:
-    st.session_state.username = None
+    st.session_state.page = "login"
 
-def register():
-    st.title("Registrera nytt konto")
-    new_user = st.text_input("Användarnamn")
-    new_password = st.text_input("Lösenord", type="password")
-    if st.button("Registrera"):
-        if new_user == "" or new_password == "":
-            st.error("Fyll i både användarnamn och lösenord")
-        elif new_user in users_df['username'].values:
-            st.error("Användarnamnet är redan taget")
-        else:
-            global users_df
-            users_df = users_df.append({
-                "username": new_user,
-                "password_hash": hash_password(new_password)
-            }, ignore_index=True)
-            users_df.to_csv(USER_FIL, index=False)
-            st.success("Registrering lyckades! Logga in nu.")
-            st.session_state.page = "login"
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
 
-def login():
-    st.title("Logga in")
-    username = st.text_input("Användarnamn")
-    password = st.text_input("Lösenord", type="password")
-    if st.button("Logga in"):
-        if username in users_df['username'].values:
-            saved_hash = users_df.loc[users_df['username'] == username, 'password_hash'].values[0]
-            if hash_password(password) == saved_hash:
-                st.success(f"Inloggad som {username}")
-                st.session_state.username = username
+if "confirm_delete_index" not in st.session_state:
+    st.session_state.confirm_delete_index = None
+
+# --- SIDOR/FUNKTIONER ---
+
+def login_page():
+    st.title("Logga in / Registrera")
+    användarnamn = st.text_input("Användarnamn")
+    lösen = st.text_input("Lösenord", type="password")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Logga in"):
+            if användarnamn == "" or lösen == "":
+                st.error("Fyll i användarnamn och lösenord.")
+                return
+            users_df = st.session_state.users_df
+            hashed = hash_losen(lösen)
+            user_row = users_df[(users_df["Användarnamn"] == användarnamn) & (users_df["Lösenhash"] == hashed)]
+            if not user_row.empty:
+                st.session_state.current_user = användarnamn
                 st.session_state.page = "home"
+                st.success(f"Välkommen tillbaka, {användarnamn}!")
             else:
-                st.error("Fel lösenord")
-        else:
-            st.error("Användaren finns inte")
-    if st.button("Registrera nytt konto"):
-        st.session_state.page = "register"
+                st.error("Felaktigt användarnamn eller lösenord.")
 
-def home():
-    st.title(f"🎣 Fiskeloggen - Välkommen {st.session_state.username}")
+    with col2:
+        if st.button("Registrera nytt konto"):
+            if användarnamn == "" or lösen == "":
+                st.error("Fyll i användarnamn och lösenord.")
+                return
+            users_df = st.session_state.users_df
+            if användarnamn in users_df["Användarnamn"].values:
+                st.error("Användarnamnet är upptaget. Välj ett annat.")
+            else:
+                ny_rad = {"Användarnamn": användarnamn, "Lösenhash": hash_losen(lösen)}
+                st.session_state.users_df = pd.concat([users_df, pd.DataFrame([ny_rad])], ignore_index=True)
+                spara_users(st.session_state.users_df)
+                st.success("Konto skapat! Logga in nu.")
+
+def home_page():
+    st.title(f"🎣 Fiskeloggen - Välkommen {st.session_state.current_user}")
+
     if st.button("Mina fångster"):
         st.session_state.page = "mina_fangster"
+
     if st.button("Ny logg"):
         st.session_state.page = "ny_logg"
-    if st.button("Logga ut"):
-        st.session_state.username = None
-        st.session_state.page = "login"
 
-# Anpassa mina fångster och ny_logg för att filtrera på st.session_state.username också
+    if st.button("Logga ut"):
+        st.session_state.current_user = None
+        st.session_state.page = "login"
 
 def visa_mina_fangster():
     st.title("Mina fångster")
-    user_logs = df[df['Användare'] == st.session_state.username]
-    if user_logs.empty:
+    df = st.session_state.df
+    användare = st.session_state.current_user
+    mina_fangster = df[df["Användare"] == användare]
+
+    if mina_fangster.empty:
         st.info("Du har inga fångster ännu.")
     else:
-        for i, row in user_logs.iterrows():
+        for i, row in mina_fangster.iterrows():
             with st.expander(f"{row['Datum']} – {row['Art']}"):
                 st.write(f"Plats: {row['Plats']}")
                 st.write(f"Vikt: {row['Vikt (kg)']} kg")
-                if pd.notna(row['Bild']):
-                    st.image(row['Bild'], width=200)
-    if st.button("Tillbaka", key="tillbaka_fangster"):
+                if pd.notna(row['Bild']) and row['Bild'] != "":
+                    try:
+                        st.image(row['Bild'], width=200)
+                    except:
+                        st.warning("Bild kunde inte laddas.")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"Ta bort logg #{i}", key=f"ta_bort_{i}"):
+                        st.session_state.confirm_delete_index = i
+
+    if st.session_state.confirm_delete_index is not None:
+        if st.button("Ja, ta bort loggen"):
+            i = st.session_state.confirm_delete_index
+            st.session_state.df = st.session_state.df.drop(i).reset_index(drop=True)
+            spara_loggar(st.session_state.df)
+            st.success("Logg borttagen.")
+            st.session_state.confirm_delete_index = None
+            st.experimental_rerun()
+        if st.button("Nej, ångra"):
+            st.session_state.confirm_delete_index = None
+            st.experimental_rerun()
+
+    if st.button("Tillbaka"):
         st.session_state.page = "home"
 
 def ny_logg():
@@ -103,47 +150,40 @@ def ny_logg():
 
         submitted = st.form_submit_button("Spara logg")
         if submitted:
+            skapa_mapp_om_saknas(BILD_MAPP)
             bild_path = ""
             if bild is not None:
-                if not os.path.exists("bilder"):
-                    os.makedirs("bilder")
-                bild_path = f"bilder/{bild.name}"
+                bild_path = os.path.join(BILD_MAPP, bild.name)
                 with open(bild_path, "wb") as f:
                     f.write(bild.getbuffer())
-            global df
+
             ny_rad = {
-                "Användare": st.session_state.username,
                 "Datum": datum.strftime("%Y-%m-%d"),
                 "Art": art,
                 "Vikt (kg)": vikt,
                 "Plats": plats,
-                "Bild": bild_path
+                "Bild": bild_path,
+                "Användare": st.session_state.current_user
             }
-            df = df.append(ny_rad, ignore_index=True)
-            df.to_csv(LOGG_FIL, index=False)
+            df = st.session_state.df
+            st.session_state.df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
+            spara_loggar(st.session_state.df)
             st.success("Logg sparad!")
             st.session_state.page = "home"
 
-    if st.button("Tillbaka", key="tillbaka_nylogg"):
+    if st.button("Tillbaka"):
         st.session_state.page = "home"
 
-# Main page routing
+# --- HUVUDPROGRAM ---
+
 if st.session_state.page == "login":
-    login()
-elif st.session_state.page == "register":
-    register()
+    login_page()
+
 elif st.session_state.page == "home":
-    if st.session_state.username:
-        home()
-    else:
-        st.session_state.page = "login"
+    home_page()
+
 elif st.session_state.page == "mina_fangster":
-    if st.session_state.username:
-        visa_mina_fangster()
-    else:
-        st.session_state.page = "login"
+    visa_mina_fangster()
+
 elif st.session_state.page == "ny_logg":
-    if st.session_state.username:
-        ny_logg()
-    else:
-        st.session_state.page = "login"
+    ny_logg()
