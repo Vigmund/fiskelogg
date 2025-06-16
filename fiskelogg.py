@@ -85,10 +85,16 @@ if "page" not in st.session_state:
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
 
+def colored_label(text):
+    i = random.randint(0, len(GRONA_FARGER)-1)
+    return f"<span class='gron{i}'>{text}</span>"
+
 def register():
     st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Registrera nytt konto</h1>", unsafe_allow_html=True)
-    username = st.text_input("Användarnamn", key="reg_user")
-    password = st.text_input("Lösenord", type="password", key="reg_pw")
+    st.markdown(colored_label("Användarnamn"), unsafe_allow_html=True)
+    username = st.text_input("", key="reg_user")
+    st.markdown(colored_label("Lösenord"), unsafe_allow_html=True)
+    password = st.text_input("", type="password", key="reg_pw")
 
     if st.button("Registrera"):
         global users_df
@@ -108,8 +114,10 @@ def register():
 
 def login():
     st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>Logga in</h1>", unsafe_allow_html=True)
-    username = st.text_input("Användarnamn", key="login_user")
-    password = st.text_input("Lösenord", type="password", key="login_pw")
+    st.markdown(colored_label("Användarnamn"), unsafe_allow_html=True)
+    username = st.text_input("", key="login_user")
+    st.markdown(colored_label("Lösenord"), unsafe_allow_html=True)
+    password = st.text_input("", type="password", key="login_pw")
 
     if st.button("Logga in"):
         global users_df
@@ -137,10 +145,10 @@ def visa_mina_fangster():
     else:
         for i, row in user_logs.iterrows():
             with st.expander(f"{row['Datum']} – {row['Art']}"):
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Plats: {row['Plats']}</p>", unsafe_allow_html=True)
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Vikt: {row['Vikt (kg)']} kg</p>", unsafe_allow_html=True)
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Längd: {row.get('Längd (cm)', 'N/A')} cm</p>", unsafe_allow_html=True)
-                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>Meddelande: {row.get('Meddelande', '')}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Plats')}: {row['Plats']}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Vikt')}: {row['Vikt (kg)']} kg</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Längd')}: {row.get('Längd (cm)', 'N/A')} cm</p>", unsafe_allow_html=True)
+                st.markdown(f"<p class='gron{random.randint(0,len(GRONA_FARGER)-1)}'>{colored_label('Meddelande')}: {row.get('Meddelande', '')}</p>", unsafe_allow_html=True)
                 if pd.notna(row['Bild']) and row['Bild'] != "":
                     st.image(row['Bild'], width=200)
 
@@ -172,26 +180,25 @@ def ny_logg():
     global logs_df
 
     with st.form("form_ny_logg"):
-        datum = st.date_input("Datum")
-        art = st.text_input("Art")
-        vikt = st.number_input("Vikt (kg)", min_value=0.0, format="%.2f")
-        langd = st.number_input("Längd (cm)", min_value=0, format="%d")
-        plats = st.text_input("Plats")
-        meddelande = st.text_area("Meddelande")
-        bild = st.file_uploader("Ladda upp bild", type=["png", "jpg", "jpeg"])
+        st.markdown(colored_label("Datum"))
+        datum = st.date_input("")
+        st.markdown(colored_label("Art"))
+        art = st.text_input("")
+        st.markdown(colored_label("Vikt (kg)"))
+        vikt = st.number_input("", min_value=0.0, format="%.2f")
+        st.markdown(colored_label("Längd (cm)"))
+        langd = st.number_input("", min_value=0, format="%d")
+        st.markdown(colored_label("Plats"))
+        plats = st.text_input("")
+        st.markdown(colored_label("Meddelande"))
+        meddelande = st.text_area("")
+        st.markdown(colored_label("Bild (URL)"))
+        bild = st.text_input("")
 
         submitted = st.form_submit_button("Spara logg")
 
         if submitted:
-            bild_path = ""
-            if bild is not None:
-                if not os.path.exists("bilder"):
-                    os.makedirs("bilder")
-                bild_path = f"bilder/{bild.name}"
-                with open(bild_path, "wb") as f:
-                    f.write(bild.getbuffer())
-
-            ny_rad = {
+            ny_logg = {
                 "username": st.session_state.logged_in_user,
                 "Datum": datum.strftime("%Y-%m-%d"),
                 "Art": art,
@@ -199,15 +206,12 @@ def ny_logg():
                 "Längd (cm)": langd,
                 "Plats": plats,
                 "Meddelande": meddelande,
-                "Bild": bild_path
+                "Bild": bild,
             }
-            logs_df = pd.concat([logs_df, pd.DataFrame([ny_rad])], ignore_index=True)
+            logs_df = pd.concat([logs_df, pd.DataFrame([ny_logg])], ignore_index=True)
             save_logs(logs_df)
             st.success("Logg sparad!")
-            st.session_state.page = "home"
-
-    if st.button("Tillbaka"):
-        st.session_state.page = "home"
+            st.session_state.page = "mina_fangster"
 
 def home():
     st.markdown(f"<h1 class='gron{GRONA_FARGER.index('#30694B')}'>🎣 Fiskeloggen</h1>", unsafe_allow_html=True)
@@ -223,7 +227,6 @@ def home():
         st.session_state.logged_in_user = None
         st.session_state.page = "login"
 
-# Kör sida baserat på state
 if st.session_state.page == "login":
     login()
 elif st.session_state.page == "register":
