@@ -89,12 +89,9 @@ def register():
             save_users(users_df)
             st.success("Konto skapat! Logga in nu.")
             st.session_state.page = "login"
-            # Istället för direkt rerun här, gör en liten knapp för användaren att trycka
-            st.experimental_rerun()
 
     if st.button("Tillbaka till inloggning"):
         st.session_state.page = "login"
-        st.experimental_rerun()
 
 def login():
     st.title("Logga in")
@@ -109,7 +106,6 @@ def login():
                 st.success(f"Välkommen, {username}!")
                 st.session_state.logged_in_user = username
                 st.session_state.page = "home"
-                st.experimental_rerun()
             else:
                 st.error("Fel lösenord.")
         else:
@@ -117,7 +113,6 @@ def login():
 
     if st.button("Registrera nytt konto"):
         st.session_state.page = "register"
-        st.experimental_rerun()
 
 def visa_mina_fangster():
     st.title("Mina fångster")
@@ -148,15 +143,14 @@ def visa_mina_fangster():
                             logs_df = logs_df.drop(row.name)
                             save_logs(logs_df)
                             st.success("Logg borttagen!")
-                            st.experimental_rerun()
+                            st.session_state.page = "mina_fangster"
+                            st.session_state[f"ta_bort_{i}"] = False
                     with col2:
                         if st.button("Nej", key=f"nej_{i}"):
                             st.session_state[f"ta_bort_{i}"] = False
-                            st.experimental_rerun()
 
     if st.button("Tillbaka"):
         st.session_state.page = "home"
-        st.experimental_rerun()
 
 def ny_logg():
     st.title("Ny logg")
@@ -192,11 +186,9 @@ def ny_logg():
             save_logs(logs_df)
             st.success("Logg sparad!")
             st.session_state.page = "home"
-            st.experimental_rerun()
 
     if st.button("Tillbaka"):
         st.session_state.page = "home"
-        st.experimental_rerun()
 
 def home():
     st.title("🎣 Fiskeloggen")
@@ -204,17 +196,15 @@ def home():
     with col1:
         if st.button("Mina fångster", use_container_width=True):
             st.session_state.page = "mina_fangster"
-            st.experimental_rerun()
     with col2:
         if st.button("Ny logg", use_container_width=True):
             st.session_state.page = "ny_logg"
-            st.experimental_rerun()
 
     if st.button("Logga ut"):
         st.session_state.logged_in_user = None
         st.session_state.page = "login"
-        st.experimental_rerun()
 
+# Kör sida baserat på state
 if st.session_state.page == "login":
     login()
 elif st.session_state.page == "register":
