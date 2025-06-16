@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="Fiskeloggen", page_icon="🐟", layout="centered")
+st.set_page_config(page_title="Fiskeloggen", page_icon="🐟", layout="wide")
 
 st.markdown(
     """
@@ -36,23 +36,45 @@ def startsida():
 
     if "inloggad" not in st.session_state:
         st.session_state.inloggad = False
+    if "page" not in st.session_state:
+        st.session_state.page = None
 
     if not st.session_state.inloggad:
-        menyval = st.sidebar.radio("Navigering", ["Logga in", "Skapa konto"])
-        if menyval == "Logga in":
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Logga in"):
+                st.session_state.page = "login"
+        with col2:
+            if st.button("Skapa konto"):
+                st.session_state.page = "register"
+
+        if st.session_state.page == "login":
             login()
-        elif menyval == "Skapa konto":
+        elif st.session_state.page == "register":
             register()
+        else:
+            st.info("Välj ett alternativ ovanför för att logga in eller skapa konto.")
     else:
-        menyval = st.sidebar.radio("Navigering", ["Logga ny fisk", "Mina loggar", "Logga ut"])
-        if menyval == "Logga ny fisk":
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Logga ny fisk"):
+                st.session_state.page = "ny_logg"
+        with col2:
+            if st.button("Mina loggar"):
+                st.session_state.page = "home"
+        with col3:
+            if st.button("Logga ut"):
+                st.session_state.inloggad = False
+                st.session_state.användare = ""
+                st.session_state.page = None
+                safe_rerun()
+
+        if st.session_state.page == "ny_logg":
             ny_logg()
-        elif menyval == "Mina loggar":
+        elif st.session_state.page == "home":
             home()
-        elif menyval == "Logga ut":
-            st.session_state.inloggad = False
-            st.session_state.användare = ""
-            safe_rerun()
+        else:
+            st.info("Välj ett alternativ ovanför för att fortsätta.")
 
 def login():
     st.subheader("Logga in")
@@ -62,6 +84,7 @@ def login():
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
+            st.session_state.page = None
             st.success("Inloggning lyckades!")
             safe_rerun()
         else:
@@ -75,6 +98,7 @@ def register():
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
+            st.session_state.page = None
             st.success("Konto skapades!")
             safe_rerun()
         else:
