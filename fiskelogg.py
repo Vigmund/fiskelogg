@@ -5,6 +5,15 @@ import os
 
 st.set_page_config(page_title="Fiskeloggen", page_icon="🐟", layout="centered")
 
+# Anpassa bakgrundsfärg
+st.markdown("""
+    <style>
+    body {
+        background-color: #EDE8D0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 DATAFIL = "fiskeloggar.csv"
 
 def safe_rerun():
