@@ -53,15 +53,15 @@ def ny_logg():
                     f.write(bild.getbuffer())
 
             ny_rad = {
-                "Datum": datum.strftime("%Y-%m-%d"),
-                "Art": art,
-                "Vikt (kg)": vikt,
-                "Plats": plats,
-                "Bild": bild_path
-            }
-            global df
-            df = df.append(ny_rad, ignore_index=True)
-            df.to_csv(LOGG_FIL, index=False)
+    "Datum": datum.strftime("%Y-%m-%d"),
+    "Art": art,
+    "Vikt (kg)": vikt,
+    "Plats": plats,
+    "Bild": bild_path
+}
+global df
+df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
+df.to_csv(LOGG_FIL, index=False)
             st.success("Logg sparad!")
             st.session_state.page = "home"
 
