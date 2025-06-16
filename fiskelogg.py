@@ -42,10 +42,10 @@ def startsida():
     if not st.session_state.inloggad:
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Logga in"):
+            if st.button("Logga in", key="btn_logga_in_start"):
                 st.session_state.page = "login"
         with col2:
-            if st.button("Skapa konto"):
+            if st.button("Skapa konto", key="btn_skapa_konto_start"):
                 st.session_state.page = "register"
 
         if st.session_state.page == "login":
@@ -57,13 +57,13 @@ def startsida():
     else:
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("Logga ny fisk"):
+            if st.button("Logga ny fisk", key="btn_logga_ny_fisk"):
                 st.session_state.page = "ny_logg"
         with col2:
-            if st.button("Mina loggar"):
+            if st.button("Mina loggar", key="btn_mina_loggar"):
                 st.session_state.page = "home"
         with col3:
-            if st.button("Logga ut"):
+            if st.button("Logga ut", key="btn_logga_ut"):
                 st.session_state.inloggad = False
                 st.session_state.användare = ""
                 st.session_state.page = None
@@ -78,9 +78,9 @@ def startsida():
 
 def login():
     st.subheader("Logga in")
-    användarnamn = st.text_input("Användarnamn")
-    lösenord = st.text_input("Lösenord", type="password")
-    if st.button("Logga in"):
+    användarnamn = st.text_input("Användarnamn", key="input_anvandarnamn_login")
+    lösenord = st.text_input("Lösenord", type="password", key="input_losenord_login")
+    if st.button("Logga in", key="btn_logga_in_login"):
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
@@ -92,9 +92,9 @@ def login():
 
 def register():
     st.subheader("Skapa konto")
-    användarnamn = st.text_input("Välj användarnamn")
-    lösenord = st.text_input("Välj lösenord", type="password")
-    if st.button("Skapa konto"):
+    användarnamn = st.text_input("Välj användarnamn", key="input_anvandarnamn_register")
+    lösenord = st.text_input("Välj lösenord", type="password", key="input_losenord_register")
+    if st.button("Skapa konto", key="btn_skapa_konto_register"):
         if användarnamn and lösenord:
             st.session_state.inloggad = True
             st.session_state.användare = användarnamn
@@ -130,14 +130,14 @@ def home():
 
 def ny_logg():
     st.title("➕ Logga ny fisk")
-    art = st.text_input("Vilken art fångade du?")
-    plats = st.text_input("Var fångade du den?")
-    längd = st.number_input("Hur lång var fisken? (cm)", min_value=0.0, step=0.1)
-    vikt = st.number_input("Hur mycket vägde den? (kg)", min_value=0.0, step=0.1)
-    datum = st.date_input("När fångades fisken?", value=datetime.today())
-    bild = st.file_uploader("Ladda upp en bild (valfritt)", type=["jpg", "jpeg", "png"])
+    art = st.text_input("Vilken art fångade du?", key="input_art_nylogg")
+    plats = st.text_input("Var fångade du den?", key="input_plats_nylogg")
+    längd = st.number_input("Hur lång var fisken? (cm)", min_value=0.0, step=0.1, key="input_langd_nylogg")
+    vikt = st.number_input("Hur mycket vägde den? (kg)", min_value=0.0, step=0.1, key="input_vikt_nylogg")
+    datum = st.date_input("När fångades fisken?", value=datetime.today(), key="input_datum_nylogg")
+    bild = st.file_uploader("Ladda upp en bild (valfritt)", type=["jpg", "jpeg", "png"], key="input_bild_nylogg")
 
-    if st.button("Spara logg"):
+    if st.button("Spara logg", key="btn_spara_logg"):
         if not art or not plats:
             st.error("Fyll i alla obligatoriska fält.")
             return
