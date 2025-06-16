@@ -2,11 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# --- Globala DataFrames och datafiler ---
 USERS_FILE = "users.csv"
 LOGS_FILE = "logs.csv"
 
-# Grön färglista
 GRONA_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
 
 def load_users():
@@ -27,20 +25,15 @@ def load_logs():
 def save_logs(df):
     df.to_csv(LOGS_FILE, index=False)
 
-# Ladda data i session state (endast första gången)
 if "users_df" not in st.session_state:
     st.session_state.users_df = load_users()
-
 if "logs_df" not in st.session_state:
     st.session_state.logs_df = load_logs()
-
-# Session state login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = ""
 
-# --- CSS och layout ---
 def set_custom_theme():
     grona_css = ""
     for i, farg in enumerate(GRONA_FARGER):
@@ -65,6 +58,7 @@ def set_custom_theme():
             font-weight: 600;
             border: none;
             margin-top: 10px;
+            cursor: pointer;
         }}
         .stButton > button:hover {{
             background-color: #62BD69;
@@ -75,9 +69,15 @@ def set_custom_theme():
             border: 1px solid #358856;
             padding: 6px;
             background-color: white;
-            color: #25523B;
+            color: #25523B !important;
+            font-weight: 600;
+            font-size: 16px;
         }}
-        /* Göm input-labels */
+        input::placeholder, textarea::placeholder {{
+            color: #30694B;
+            opacity: 0.7;
+        }}
+        /* Göm inbyggda input-labels men visa våra egna */
         div[data-baseweb="input"] > label,
         textarea[data-baseweb="textarea"] > label {{
             display: none !important;
@@ -93,12 +93,10 @@ def set_custom_theme():
     )
 
 def colored_label(text):
-    # Returnerar en label i random grön färg från listan, fet stil
     from random import choice
     farg = choice(GRONA_FARGER)
     return f"<span style='color:{farg}; font-weight:600;'>{text}</span>"
 
-# --- Funktioner för inloggning/registrering ---
 def login():
     st.markdown("<h2 class='gron0'>Logga in</h2>", unsafe_allow_html=True)
     with st.form("login_form"):
@@ -140,7 +138,6 @@ def logout():
     st.session_state.logged_in_user = ""
     st.experimental_rerun()
 
-# --- Ny logg funktion med fixad form och layout ---
 def ny_logg():
     st.markdown(f"<h1 class='gron2'>Ny logg</h1>", unsafe_allow_html=True)
     df = st.session_state.logs_df
@@ -179,7 +176,6 @@ def ny_logg():
             st.success("Logg sparad!")
             st.experimental_rerun()
 
-# --- Visa mina fångster med ta bort knapp ---
 def visa_mina_fangster():
     st.markdown(f"<h1 class='gron3'>Mina fångster</h1>", unsafe_allow_html=True)
     df = st.session_state.logs_df
@@ -200,7 +196,6 @@ def visa_mina_fangster():
         if rad['Bild']:
             st.image(rad['Bild'], use_column_width=True)
 
-        # Bekräftelse för att ta bort
         if st.button(f"Ta bort logg #{idx}", key=f"ta_bort_{idx}"):
             confirm = st.radio(
                 "Är du säker på att du vill slänga tillbaks den här fisken i sjön?",
@@ -213,18 +208,19 @@ def visa_mina_fangster():
                 st.success("Logg borttagen!")
                 st.experimental_rerun()
 
-# --- Huvudfunktion ---
 def main():
     set_custom_theme()
 
     if not st.session_state.logged_in:
-        tab = st.radio("Välj", ("Logga in", "Registrera konto"))
-        if tab == "Logga in":
+        st.title("Fiskeloggen")
+        st.write("Vänligen logga in eller registrera dig.")
+        col1, col2 = st.columns(2)
+        with col1:
             login()
-        else:
+        with col2:
             register()
     else:
-        st.markdown(f"<h2 class='gron4'>Välkommen, {st.session_state.logged_in_user}!</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2>Välkommen, {st.session_state.logged_in_user}!</h2>", unsafe_allow_html=True)
         meny = st.sidebar.radio("Meny", ["Ny logg", "Mina fångster", "Logga ut"])
 
         if meny == "Ny logg":
