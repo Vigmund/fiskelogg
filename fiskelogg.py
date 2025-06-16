@@ -3,10 +3,6 @@ import pandas as pd
 import os
 
 LOGG_FIL = "loggar.csv"
-BILD_MAPP = "bilder"
-
-# Se till att bildmapp finns
-os.makedirs(BILD_MAPP, exist_ok=True)
 
 # Läs in loggar
 if os.path.exists(LOGG_FIL):
@@ -20,8 +16,6 @@ if "page" not in st.session_state:
 
 def visa_mina_fangster():
     st.title("Mina fångster")
-    global df  # Så vi kan uppdatera den
-
     if df.empty:
         st.info("Du har inga fångster ännu.")
     else:
@@ -29,7 +23,7 @@ def visa_mina_fangster():
             with st.expander(f"{row['Datum']} – {row['Art']}"):
                 st.write(f"Plats: {row['Plats']}")
                 st.write(f"Vikt: {row['Vikt (kg)']} kg")
-                if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
+                if pd.notna(row['Bild']):
                     st.image(row['Bild'], width=200)
 
                 if st.button("Ta bort logg", key=f"delete_{i}"):
@@ -37,10 +31,14 @@ def visa_mina_fangster():
                     if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
                         os.remove(row['Bild'])
 
-                    df = df.drop(i).reset_index(drop=True)
+                    df.drop(i, inplace=True)
+                    df.reset_index(drop=True, inplace=True)
                     df.to_csv(LOGG_FIL, index=False)
+
+                    st.session_state.page = "mina_fangster"
+                    st.experimental_set_query_params()
                     st.success("Logg borttagen!")
-                    st.experimental_rerun()
+                    return
 
     if st.button("Tillbaka", key="tillbaka_fangster"):
         st.session_state.page = "home"
@@ -56,9 +54,12 @@ def ny_logg():
 
         submitted = st.form_submit_button("Spara logg")
         if submitted:
+            # Skapa mapp om den inte finns
+            os.makedirs("bilder", exist_ok=True)
+
             bild_path = ""
             if bild is not None:
-                bild_path = os.path.join(BILD_MAPP, bild.name)
+                bild_path = f"bilder/{bild.name}"
                 with open(bild_path, "wb") as f:
                     f.write(bild.getbuffer())
 
@@ -69,10 +70,10 @@ def ny_logg():
                 "Plats": plats,
                 "Bild": bild_path
             }
-
             global df
             df.loc[len(df)] = ny_rad
             df.to_csv(LOGG_FIL, index=False)
+
             st.success("Logg sparad!")
             st.session_state.page = "home"
 
