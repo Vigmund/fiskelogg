@@ -1,227 +1,217 @@
 import streamlit as st
 import pandas as pd
+import os
 from datetime import datetime
+import hashlib
 
-USERS_FILE = "users.csv"
-LOGS_FILE = "logs.csv"
+# Färger
+BEIGE_BG = "#EDE8D0"
+GRON_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
 
-GRONA_FARGER = ["#25523B", "#358856", "#5AAB61", "#62BD69", "#30694B", "#0C3823"]
+# Filvägar
+USERS_CSV = "users.csv"
+LOGS_CSV = "logs.csv"
+BILDER_MAPP = "bilder"
 
-def load_users():
-    try:
-        return pd.read_csv(USERS_FILE)
-    except FileNotFoundError:
-        return pd.DataFrame(columns=["username", "password"])
+# Se till att mappen för bilder finns
+os.makedirs(BILDER_MAPP, exist_ok=True)
 
-def save_users(df):
-    df.to_csv(USERS_FILE, index=False)
+# Initiera dataframes
+if os.path.exists(USERS_CSV):
+    users_df = pd.read_csv(USERS_CSV)
+else:
+    users_df = pd.DataFrame(columns=["username", "password_hash"])
 
-def load_logs():
-    try:
-        return pd.read_csv(LOGS_FILE)
-    except FileNotFoundError:
-        return pd.DataFrame(columns=["username", "Datum", "Art", "Vikt (kg)", "Längd (cm)", "Plats", "Meddelande", "Bild"])
+if os.path.exists(LOGS_CSV):
+    logs_df = pd.read_csv(LOGS_CSV)
+else:
+    logs_df = pd.DataFrame(columns=["username", "datum", "art", "vikt", "langd", "plats", "meddelande", "bild_path"])
 
-def save_logs(df):
-    df.to_csv(LOGS_FILE, index=False)
+# Hjälpfunktioner
+def hash_losen(losen):
+    return hashlib.sha256(losen.encode()).hexdigest()
 
-if "users_df" not in st.session_state:
-    st.session_state.users_df = load_users()
-if "logs_df" not in st.session_state:
-    st.session_state.logs_df = load_logs()
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "logged_in_user" not in st.session_state:
-    st.session_state.logged_in_user = ""
-if "register_success" not in st.session_state:
-    st.session_state.register_success = False
+def spara_users():
+    users_df.to_csv(USERS_CSV, index=False)
 
-def set_custom_theme():
+def spara_logs():
+    logs_df.to_csv(LOGS_CSV, index=False)
+
+def login():
+    st.title("Logga in")
+    with st.form("login_form"):
+        username = st.text_input("Användarnamn", key="login_user")
+        password = st.text_input("Lösenord", type="password", key="login_pass")
+        submitted = st.form_submit_button("Logga in")
+    if submitted:
+        if username in users_df["username"].values:
+            hash_pass = hash_losen(password)
+            user_pass_hash = users_df.loc[users_df["username"]==username, "password_hash"].values[0]
+            if hash_pass == user_pass_hash:
+                st.session_state["username"] = username
+                st.session_state["logged_in"] = True
+                st.success(f"Välkommen, {username}!")
+                st.experimental_rerun()
+            else:
+                st.error("Fel lösenord")
+        else:
+            st.error("Användare finns inte")
+
+def register():
+    st.title("Registrera nytt konto")
+    with st.form("register_form"):
+        new_username = st.text_input("Välj användarnamn", key="reg_user")
+        new_password = st.text_input("Välj lösenord", type="password", key="reg_pass")
+        submitted = st.form_submit_button("Registrera")
+    if submitted:
+        if new_username.strip() == "" or new_password.strip() == "":
+            st.error("Fyll i både användarnamn och lösenord.")
+            return
+        if new_username in users_df["username"].values:
+            st.error("Användarnamn upptaget, välj ett annat.")
+            return
+        ny_hash = hash_losen(new_password)
+        global users_df
+        users_df = pd.concat([users_df, pd.DataFrame([{"username":new_username, "password_hash":ny_hash}])], ignore_index=True)
+        spara_users()
+        st.success("Konto skapat! Logga in nedan.")
+        st.experimental_rerun()
+
+def logout():
+    st.session_state.clear()
+    st.experimental_rerun()
+
+def startsida():
+    st.markdown(f"<h1 style='color:{GRON_FARGER[0]};'>Välkommen till Fiskeloggen!</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{GRON_FARGER[1]}; font-size:18px;'>Här kan du enkelt logga dina fångster och hålla koll på din fiskelycka.</p>", unsafe_allow_html=True)
+    st.image("https://cdn-icons-png.flaticon.com/512/616/616408.png", width=150)  # Du kan byta ut mot din egen bild eller logga
+
+def ny_logg():
+    st.header("Ny fångst")
+
+    with st.form("ny_logg_form"):
+        datum = st.date_input("Datum")
+        art = st.text_input("Art")
+        vikt = st.number_input("Vikt (kg)", min_value=0.0, step=0.1, format="%.2f")
+        langd = st.number_input("Längd (cm)", min_value=0.0, step=0.1, format="%.1f")
+        plats = st.text_input("Plats")
+        meddelande = st.text_area("Meddelande (valfritt)")
+        bild = st.file_uploader("Ladda upp bild (valfritt)", type=["png","jpg","jpeg"])
+        submit = st.form_submit_button("Spara logg")
+
+    if submit:
+        if art.strip() == "":
+            st.error("Ange art.")
+            return
+
+        filnamn = ""
+        if bild is not None:
+            filnamn = f"{st.session_state['username']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{bild.name}"
+            bild_path = os.path.join(BILDER_MAPP, filnamn)
+            with open(bild_path, "wb") as f:
+                f.write(bild.getbuffer())
+        else:
+            bild_path = ""
+
+        ny_rad = {
+            "username": st.session_state["username"],
+            "datum": datum.strftime("%Y-%m-%d"),
+            "art": art,
+            "vikt": vikt,
+            "langd": langd,
+            "plats": plats,
+            "meddelande": meddelande,
+            "bild_path": bild_path
+        }
+
+        global logs_df
+        logs_df = pd.concat([logs_df, pd.DataFrame([ny_rad])], ignore_index=True)
+        spara_logs()
+        st.success("Logg sparad!")
+
+def visa_mina_fangster():
+    st.header("Mina fångster")
+
+    user_logs = logs_df[logs_df["username"] == st.session_state["username"]]
+    if user_logs.empty:
+        st.info("Du har inga fångster sparade.")
+        return
+
+    for i, row in user_logs.iterrows():
+        color = GRON_FARGER[i % len(GRON_FARGER)]
+        st.markdown(f"### <span style='color:{color};'>{row['datum']} - {row['art']}</span>", unsafe_allow_html=True)
+        st.write(f"Vikt: {row['vikt']} kg")
+        st.write(f"Längd: {row['langd']} cm")
+        st.write(f"Plats: {row['plats']}")
+        if row['meddelande']:
+            st.write(f"Meddelande: {row['meddelande']}")
+        if row['bild_path']:
+            if os.path.exists(row['bild_path']):
+                st.image(row['bild_path'], width=300)
+        st.markdown("---")
+
+        # Ta bort knapp med bekräftelse
+        ta_bort = st.button(f"Släng tillbaka fisken i sjön (ID: {i})")
+        if ta_bort:
+            if st.confirm(f"Är du säker på att du vill slänga tillbaka fisken {row['art']} från {row['datum']}?"):
+                global logs_df
+                logs_df = logs_df.drop(i).reset_index(drop=True)
+                spara_logs()
+                st.success("Logg borttagen!")
+                st.experimental_rerun()
+
+def main():
+    st.set_page_config(page_title="Fiskeloggen", page_icon=":fish:", layout="centered")
     st.markdown(
         f"""
         <style>
-        .stApp {{
-            background-color: #EDE8D0;
-            color: #25523B;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        }}
-        h1, h2, h3, h4, h5 {{
-            color: #30694B !important;
-            font-weight: 700 !important;
-        }}
-        label, .streamlit-expanderHeader, .st-bx {{
-            font-weight: 600;
-            color: #30694B !important;
-        }}
-        /* Knappar */
-        .stButton > button {{
-            background-color: #5AAB61 !important;
-            color: white !important;
-            border-radius: 8px !important;
-            padding: 8px 18px !important;
-            font-weight: 700 !important;
-            border: none !important;
-            cursor: pointer !important;
-        }}
-        .stButton > button:hover {{
-            background-color: #62BD69 !important;
-            color: white !important;
-        }}
-        /* Inputs */
-        input, textarea {{
-            background-color: white !important;
-            color: #25523B !important;
-            font-weight: 600 !important;
-            font-size: 16px !important;
-            border: 1px solid #358856 !important;
-            border-radius: 6px !important;
-            padding: 6px !important;
-        }}
-        input::placeholder, textarea::placeholder {{
-            color: #30694B !important;
-            opacity: 0.8 !important;
-        }}
-        /* Ta bort vit text i allt */
-        * {{
-            color: unset !important;
-        }}
-        /* Tvinga grön färg på text */
-        .label-text {{
-            color: #25523B !important;
-            font-weight: 700 !important;
-        }}
+            .reportview-container {{
+                background-color: {BEIGE_BG};
+            }}
+            .css-1d391kg {{
+                background-color: {BEIGE_BG};
+            }}
+            .stButton>button {{
+                background-color: {GRON_FARGER[2]};
+                color: white;
+            }}
+            .stButton>button:hover {{
+                background-color: {GRON_FARGER[4]};
+                color: white;
+            }}
+            label, .css-1n76uvr, .css-1r6slb0 {{
+                color: {GRON_FARGER[0]} !important;
+                font-weight: bold;
+            }}
+            .stTextInput>div>div>input, .stNumberInput>div>div>input, textarea {{
+                color: {GRON_FARGER[0]} !important;
+                background-color: #f0f2f6;
+            }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-def colored_label(text, idx=0):
-    farg = GRONA_FARGER[idx % len(GRONA_FARGER)]
-    return f"<span style='color:{farg}; font-weight:700;'>{text}</span>"
-
-def login():
-    st.markdown("<h2>Logga in</h2>", unsafe_allow_html=True)
-    with st.form("login_form"):
-        username = st.text_input("Användarnamn", key="login_username")
-        password = st.text_input("Lösenord", type="password", key="login_password")
-        submitted = st.form_submit_button("Logga in")
-        if submitted:
-            df = st.session_state.users_df
-            if ((df["username"] == username) & (df["password"] == password)).any():
-                st.session_state.logged_in = True
-                st.session_state.logged_in_user = username
-                st.success(f"Välkommen tillbaka, {username}!")
-                st.experimental_rerun()
-            else:
-                st.error("Fel användarnamn eller lösenord")
-
-def register():
-    st.markdown("<h2>Registrera nytt konto</h2>", unsafe_allow_html=True)
-    with st.form("register_form"):
-        username = st.text_input("Välj användarnamn", key="register_username")
-        password = st.text_input("Välj lösenord", type="password", key="register_password")
-        submitted = st.form_submit_button("Registrera")
-        if submitted:
-            df = st.session_state.users_df
-            if username in df["username"].values:
-                st.error("Användarnamnet är redan taget, välj ett annat.")
-            elif username.strip() == "" or password.strip() == "":
-                st.error("Användarnamn och lösenord får inte vara tomma.")
-            else:
-                new_user = {"username": username, "password": password}
-                st.session_state.users_df = pd.concat([df, pd.DataFrame([new_user])], ignore_index=True)
-                save_users(st.session_state.users_df)
-                st.success("Konto skapat! Logga in ovan.")
-                # Flagga så vi kan reruna UTAN att ställa om värden i formuläret
-                st.session_state.register_success = True
-
-def logout():
-    st.session_state.logged_in = False
-    st.session_state.logged_in_user = ""
-    st.experimental_rerun()
-
-def ny_logg():
-    st.markdown("<h1>Ny logg</h1>", unsafe_allow_html=True)
-    df = st.session_state.logs_df
-
-    with st.form("form_ny_logg"):
-        st.markdown(colored_label("Datum", 0), unsafe_allow_html=True)
-        datum = st.date_input("", key="datum_input")
-        st.markdown(colored_label("Art", 1), unsafe_allow_html=True)
-        art = st.text_input("", key="art_input")
-        st.markdown(colored_label("Vikt (kg)", 2), unsafe_allow_html=True)
-        vikt = st.number_input("", min_value=0.0, format="%.2f", key="vikt_input")
-        st.markdown(colored_label("Längd (cm)", 3), unsafe_allow_html=True)
-        langd = st.number_input("", min_value=0, format="%d", key="langd_input")
-        st.markdown(colored_label("Plats", 4), unsafe_allow_html=True)
-        plats = st.text_input("", key="plats_input")
-        st.markdown(colored_label("Meddelande", 5), unsafe_allow_html=True)
-        meddelande = st.text_area("", key="meddelande_input")
-        st.markdown(colored_label("Bild (URL)", 0), unsafe_allow_html=True)
-        bild = st.text_input("", key="bild_input")
-
-        submitted = st.form_submit_button("Spara logg")
-
-        if submitted:
-            ny_rad = {
-                "username": st.session_state.logged_in_user,
-                "Datum": datum.strftime("%Y-%m-%d"),
-                "Art": art,
-                "Vikt (kg)": vikt,
-                "Längd (cm)": langd,
-                "Plats": plats,
-                "Meddelande": meddelande,
-                "Bild": bild,
-            }
-            st.session_state.logs_df = pd.concat([df, pd.DataFrame([ny_rad])], ignore_index=True)
-            save_logs(st.session_state.logs_df)
-            st.success("Logg sparad!")
-            st.experimental_rerun()
-
-def visa_mina_fangster():
-    st.markdown("<h1>Mina fångster</h1>", unsafe_allow_html=True)
-    df = st.session_state.logs_df
-    user = st.session_state.logged_in_user
-
-    mina_fangster = df[df["username"] == user]
-
-    if mina_fangster.empty:
-        st.info("Du har inga sparade fångster än.")
+    if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+        # Visa login eller register
+        val = st.sidebar.selectbox("Välj", ["Logga in", "Registrera nytt konto"])
+        if val == "Logga in":
+            login()
+        else:
+            register()
         return
 
-    for idx, rad in mina_fangster.iterrows():
-        st.markdown(f"### {rad['Datum']} - {rad['Art']}")
-        st.write(f"Vikt: {rad['Vikt (kg)']} kg")
-        st.write(f"Längd: {rad['Längd (cm)']} cm")
-        st.write(f"Plats: {rad['Plats']}")
-        st.write(f"Meddelande: {rad['Meddelande']}")
-        if rad["Bild"]:
-            st.image(rad["Bild"], use_column_width=True)
-        st.markdown("---")
-
-def main():
-    set_custom_theme()
-    st.title("Fiskeloggen")
-
-    if not st.session_state.logged_in:
-        col1, col2 = st.columns(2)
-        with col1:
-            login()
-        with col2:
-            register()
-        # Efter registrering, visa knapp för att logga in
-        if st.session_state.register_success:
-            st.info("Registrering lyckades, logga in med ditt nya konto.")
-    else:
-        st.markdown(f"<h2 style='color:#0C3823;'>Välkommen, {st.session_state.logged_in_user}!</h2>", unsafe_allow_html=True)
-        meny = st.sidebar.radio("Meny", ["Ny logg", "Mina fångster", "Logga ut"])
-
-        if meny == "Ny logg":
-            ny_logg()
-        elif meny == "Mina fångster":
-            visa_mina_fangster()
-        elif meny == "Logga ut":
-            logout()
+    # Inloggad användare - visa meny och startsida
+    meny_val = st.sidebar.radio("Meny", ["Startsida", "Ny logg", "Mina fångster", "Logga ut"], index=0)
+    if meny_val == "Logga ut":
+        logout()
+        return
+    elif meny_val == "Startsida":
+        startsida()
+    elif meny_val == "Ny logg":
+        ny_logg()
+    elif meny_val == "Mina fångster":
+        visa_mina_fangster()
 
 if __name__ == "__main__":
     main()
