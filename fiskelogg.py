@@ -28,20 +28,20 @@ def visa_mina_fangster():
             with st.expander(f"{row['Datum']} – {row['Art']}"):
                 st.write(f"Plats: {row['Plats']}")
                 st.write(f"Vikt: {row['Vikt (kg)']} kg")
-                if pd.notna(row['Bild']):
+                if pd.notna(row['Bild']) and row['Bild'] != "":
                     st.image(row['Bild'], width=200)
 
                 if st.session_state.delete_index is None:
                     if st.button("Ta bort logg", key=f"delete_{i}"):
                         st.session_state.delete_index = i
-                        st.experimental_rerun()
+                        # Vi undviker direkt rerun, låt sidan uppdateras naturligt
                 elif st.session_state.delete_index == i:
                     st.warning("Är du säker på att du vill slänga tillbaks den här fisken i sjön?")
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("Ja, ta bort"):
                             # Radera eventuell bildfil
-                            if pd.notna(row['Bild']) and os.path.exists(row['Bild']):
+                            if pd.notna(row['Bild']) and row['Bild'] != "" and os.path.exists(row['Bild']):
                                 os.remove(row['Bild'])
                             df.drop(i, inplace=True)
                             df.reset_index(drop=True, inplace=True)
@@ -54,7 +54,7 @@ def visa_mina_fangster():
                     with col2:
                         if st.button("Nej, ångra"):
                             st.session_state.delete_index = None
-                            st.experimental_rerun()
+                            # Ingen rerun här heller, låt sidan uppdateras naturligt
 
     if st.button("Tillbaka", key="tillbaka_fangster"):
         st.session_state.delete_index = None
