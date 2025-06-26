@@ -1,37 +1,28 @@
 import streamlit as st
+import base64
 
-st.set_page_config(page_title="Fiskeloggen", page_icon="🐟", layout="centered")
+# Ladda bilden som bakgrund
+def add_bg_from_local(image_file):
+    with open(image_file, "rb") as file:
+        encoded = base64.b64encode(file.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-# Bakgrundsbild (lägg bilden i samma mapp eller i en undermapp som t.ex. "bilder/")
-background_url = "fiskeloggen bakgrund.png"
+# Lägg till din bakgrund
+add_bg_from_local("fiskeloggen bakgrund.png")
 
-st.markdown(
-    f"""
-    <style>
-    .stApp {{
-        background-image: url("{background_url}");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-    }}
-    .title-container {{
-        text-align: center;
-        margin-top: 50px;
-    }}
-    .title-text {{
-        font-size: 48px;
-        font-weight: bold;
-        color: #3CA36C;
-        font-family: Arial, sans-serif;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Visa logotyp och namn centrerat
-st.markdown("""
-<div class="title-container">
-    <div class="title-text">🐟 FISKELOGGEN</div>
-</div>
-""", unsafe_allow_html=True)
+# Exempel på innehåll ovanpå bilden
+st.markdown("<h1 style='text-align: center; color: white;'>Välkommen till Fiskeloggen</h1>", unsafe_allow_html=True)
+st.button("Logga in")
+st.button("Skapa konto")
